@@ -129,7 +129,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         <div className="card">
-          <h3 className="mb-4 text-lg font-semibold text-neutral-900">Évolution des moyennes</h3>
+          <h3 className="mb-4 text-lg font-semibold text-neutral-900">Repartition des notes</h3>
           <Chart type="line" />
         </div>
       </div>

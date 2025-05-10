@@ -1,43 +1,7 @@
-import React, { useState } from 'react';
-import { Search, Plus, Pencil, Trash2, X, ChevronDown, Filter, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Pencil, Trash2, X, ChevronDown, Filter } from 'lucide-react';
 
-// Mock data for students
-const MOCK_STUDENTS = [
-  {
-    id: 1,
-    name: 'Lucas Dupont',
-    class: '3ème A',
-  },
-  {
-    id: 2,
-    name: 'Emma Martin',
-    class: '4ème B',
-  },
-  {
-    id: 3,
-    name: 'Noah Bernard',
-    class: '6ème C',
-   
-  },
-  {
-    id: 4,
-    name: 'Chloé Petit',
-    class: '5ème A',
-   
-  },
-  {
-    id: 5,
-    name: 'Hugo Laurent',
-    class: '3ème B',
-  },
-  {
-    id: 6,
-    name: 'Léa Moreau',
-    class: '4ème A',
-  },
-];
-
-// Available classes for filtering
+// Classes disponibles pour le filtrage
 const CLASSES = [
   '1M1', '1M2', '1M3', '2M1', '2M2', '2M3',
   '3M1', '3M2', '3M3', '4M1', '4M2', '4M3'
@@ -46,10 +10,39 @@ const CLASSES = [
 const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
   const [formData, setFormData] = useState(
     student || {
-      name: '',
-      class: '',
+      first_name: '',
+      last_name: '',
+      class_name: '',
+      email: '',
+      password: '',
+      parentName: '',
+      parentEmail: '',
+      parentPhone: '',
+      address: '',
     }
   );
+
+  useEffect(() => {
+    if (student) {
+      setFormData({
+        ...student,
+        class_name: student.class_name || '',
+        password: ''
+      });
+    } else {
+      setFormData({
+        first_name: '',
+        last_name: '',
+        class_name: '',
+        email: '',
+        password: '',
+        parentName: '',
+        parentEmail: '',
+        parentPhone: '',
+        address: '',
+      });
+    }
+  }, [student]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,24 +61,24 @@ const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
       <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-neutral-900">
-            {type === 'add' ? 'Ajouter un élève' : 'Modifier l\'élève'}
+            type === 'add' ? 'Ajouter un élève' : 'Modifier l'élève'
           </h2>
           <button onClick={onClose} className="rounded-full p-1 hover:bg-neutral-100">
             <X className="h-5 w-5 text-neutral-500" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-neutral-700">
-                Nom complet
+              <label htmlFor="first_name" className="block text-sm font-medium text-neutral-700">
+                Prénom
               </label>
               <input
                 type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+                id="first_name"
+                name="first_name"
+                value={formData.first_name}
                 onChange={handleChange}
                 required
                 className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
@@ -93,13 +86,28 @@ const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
             </div>
             
             <div>
-              <label htmlFor="class" className="block text-sm font-medium text-neutral-700">
+              <label htmlFor="last_name" className="block text-sm font-medium text-neutral-700">
+                Nom
+              </label>
+              <input
+                type="text"
+                id="last_name"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="class_name" className="block text-sm font-medium text-neutral-700">
                 Classe
               </label>
               <select
-                id="class"
-                name="class"
-                value={formData.class}
+                id="class_name"
+                name="class_name"
+                value={formData.class_name}
                 onChange={handleChange}
                 required
                 className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
@@ -114,44 +122,14 @@ const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
             </div>
             
             <div>
-              <label htmlFor="birthdate" className="block text-sm font-medium text-neutral-700">
-                Date de naissance
-              </label>
-              <input
-                type="date"
-                id="birthdate"
-                name="birthdate"
-                value={formData.birthdate}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="parentName" className="block text-sm font-medium text-neutral-700">
-                Nom du parent
-              </label>
-              <input
-                type="text"
-                id="parentName"
-                name="parentName"
-                value={formData.parentName}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="parentEmail" className="block text-sm font-medium text-neutral-700">
-                Email du parent
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
+                Email
               </label>
               <input
                 type="email"
-                id="parentEmail"
-                name="parentEmail"
-                value={formData.parentEmail}
+                id="email"
+                name="email"
+                value={formData.email}
                 onChange={handleChange}
                 required
                 className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
@@ -159,36 +137,23 @@ const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
             </div>
             
             <div>
-              <label htmlFor="parentPhone" className="block text-sm font-medium text-neutral-700">
-                Téléphone du parent
+              <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
+                {type === 'add' ? 'Mot de passe' : 'Nouveau mot de passe (laisser vide pour ne pas changer)'}
               </label>
               <input
-                type="tel"
-                id="parentPhone"
-                name="parentPhone"
-                value={formData.parentPhone}
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
                 onChange={handleChange}
-                required
+                required={type === 'add'}
                 className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
               />
             </div>
+            
+            
           </div>
-          
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-neutral-700">
-              Adresse
-            </label>
-            <input
-              type="text"
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-            />
-          </div>
-          
+    
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
@@ -222,11 +187,11 @@ const DeleteConfirmation = ({ isOpen, student, onClose, onConfirm }) => {
           </div>
           <h2 className="mt-2 text-xl font-semibold text-neutral-900">Supprimer l'élève</h2>
           <p className="mt-2 text-sm text-neutral-600">
-            Êtes-vous sûr de vouloir supprimer l'élève <span className="font-medium">{student?.name}</span> ? 
+            Êtes-vous sûr de vouloir supprimer l'élève <span className="font-medium">{student?.first_name} {student?.last_name}</span> ?
             Cette action ne peut pas être annulée.
           </p>
         </div>
-        
+
         <div className="flex justify-center space-x-3">
           <button
             type="button"
@@ -254,7 +219,7 @@ const StudentFilters = ({ filters, setFilters, isOpen, onClose }) => {
   const handleChange = (e) => {
     setLocalFilters({
       ...localFilters,
-      class: e.target.value,
+      class_name: e.target.value,
     });
   };
 
@@ -265,7 +230,7 @@ const StudentFilters = ({ filters, setFilters, isOpen, onClose }) => {
 
   const handleReset = () => {
     const resetFilters = {
-      class: '',
+      class_name: '',
     };
     setLocalFilters(resetFilters);
     setFilters(resetFilters);
@@ -282,14 +247,14 @@ const StudentFilters = ({ filters, setFilters, isOpen, onClose }) => {
           <X className="h-4 w-4" />
         </button>
       </div>
-      
+
       <div>
         <label htmlFor="class-filter" className="block text-xs font-medium text-neutral-700">
           Classe
         </label>
         <select
           id="class-filter"
-          value={localFilters.class}
+          value={localFilters.class_name}
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
@@ -322,25 +287,51 @@ const StudentFilters = ({ filters, setFilters, isOpen, onClose }) => {
   );
 };
 
-const AdminStudents: React.FC = () => {
-  const [students, setStudents] = useState(MOCK_STUDENTS);
+const AdminStudents = () => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalState, setModalState] = useState({ isOpen: false, type: null, student: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, student: null });
-  const [filters, setFilters] = useState({ class: '' });
+  const [filters, setFilters] = useState({ class_name: '' });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
+  // Fetch students from API
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/students');
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des étudiants');
+        }
+        const data = await response.json();
+        setStudents(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching students:', err);
+        setError('Impossible de charger les étudiants. Veuillez réessayer plus tard.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
   // Filter students based on search query and filters
   const filteredStudents = students.filter((student) => {
-    const matchesSearch = 
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchQuery.toLowerCase());
-    
+    const fullName = `${student.first_name} ${student.last_name}`.toLowerCase();
+    const matchesSearch =
+      fullName.includes(searchQuery.toLowerCase()) ||
+      (student.parentName && student.parentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (student.class_name && student.class_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (student.email && student.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesClass = 
-      filters.class === '' || student.class === filters.class;
-    
+      filters.class_name === '' || student.class_name === filters.class_name;
+
     return matchesSearch && matchesClass;
   });
 
@@ -349,6 +340,20 @@ const AdminStudents: React.FC = () => {
     let sortableStudents = [...filteredStudents];
     if (sortConfig.key) {
       sortableStudents.sort((a, b) => {
+        // Handle sorting by name (combination of first_name and last_name)
+        if (sortConfig.key === 'name') {
+          const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+          const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+          if (nameA < nameB) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (nameA > nameB) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          return 0;
+        }
+        
+        // For other fields
         if (a[sortConfig.key] < b[sortConfig.key]) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
@@ -374,26 +379,113 @@ const AdminStudents: React.FC = () => {
     return sortConfig.direction === 'ascending' ? '↑' : '↓';
   };
 
-  const handleAddStudent = (student) => {
-    const newStudent = {
-      ...student,
-      id: students.length + 1,
-      avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
-    };
-    setStudents([...students, newStudent]);
-    setModalState({ isOpen: false, type: null, student: null });
+  const handleAddStudent = async (student) => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:3000/api/students', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(student),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'ajout de l\'élève');
+      }
+
+      const newStudent = await response.json();
+      
+      // Ajouter les champs supplémentaires qui ne sont pas retournés par l'API
+      const enhancedStudent = {
+        ...newStudent,
+        parentName: student.parentName,
+        parentEmail: student.parentEmail,
+        parentPhone: student.parentPhone,
+        address: student.address,
+      };
+      
+      setStudents([...students, enhancedStudent]);
+      setModalState({ isOpen: false, type: null, student: null });
+    } catch (err) {
+      console.error('Error adding student:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEditStudent = (student) => {
-    setStudents(
-      students.map((s) => (s.id === student.id ? { ...s, ...student } : s))
-    );
-    setModalState({ isOpen: false, type: null, student: null });
+  const handleEditStudent = async (student) => {
+    try {
+      setLoading(true);
+      const studentData = {
+        first_name: student.first_name,
+        last_name: student.last_name,
+        email: student.email,
+        class_name: student.class_name,
+      };
+      
+      // N'incluez le mot de passe que s'il a été fourni
+      if (student.password) {
+        studentData.password = student.password;
+      }
+
+      const response = await fetch(`http://localhost:3000/api/students/${student.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(studentData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la modification de l\'élève');
+      }
+
+      // Mettre à jour l'état local
+      setStudents(
+        students.map((s) => (s.id === student.id ? { 
+          ...s, 
+          ...student,
+          // Conserver les informations supplémentaires
+          parentName: student.parentName || s.parentName,
+          parentEmail: student.parentEmail || s.parentEmail,
+          parentPhone: student.parentPhone || s.parentPhone,
+          address: student.address || s.address
+        } : s))
+      );
+      
+      setModalState({ isOpen: false, type: null, student: null });
+    } catch (err) {
+      console.error('Error editing student:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteStudent = (id) => {
-    setStudents(students.filter((s) => s.id !== id));
-    setDeleteModal({ isOpen: false, student: null });
+  const handleDeleteStudent = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:3000/api/students/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la suppression de l\'élève');
+      }
+
+      setStudents(students.filter((s) => s.id !== id));
+      setDeleteModal({ isOpen: false, student: null });
+    } catch (err) {
+      console.error('Error deleting student:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (formData) => {
@@ -404,13 +496,23 @@ const AdminStudents: React.FC = () => {
     }
   };
 
-  const formatDateFr = (dateString) => {
-    const options = { day: 'numeric', month: 'numeric', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
-  };
+  if (loading && students.length === 0) {
+    return <div className="flex justify-center p-8">Chargement des élèves...</div>;
+  }
+
+  if (error && students.length === 0) {
+    return <div className="p-8 text-center text-error">{error}</div>;
+  }
 
   return (
     <div className="space-y-6">
+      {/* Message d'erreur */}
+      {error && (
+        <div className="rounded-md bg-error/10 p-4 text-error">
+          <p>{error}</p>
+        </div>
+      )}
+      
       {/* Header with search and add button */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="relative w-full max-w-md">
@@ -425,7 +527,7 @@ const AdminStudents: React.FC = () => {
             className="block w-full rounded-md border border-neutral-300 py-2 pl-10 pr-3 text-sm placeholder-neutral-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
-        
+
         <div className="flex space-x-3">
           <div className="relative">
             <button
@@ -458,7 +560,7 @@ const AdminStudents: React.FC = () => {
 
       {/* Students table */}
       <div className="table-container overflow-x-auto">
-        <table className="table">
+        <table className="table w-full">
           <thead>
             <tr>
               <th scope="col">
@@ -471,14 +573,21 @@ const AdminStudents: React.FC = () => {
               </th>
               <th scope="col">
                 <button
-                  onClick={() => requestSort('class')}
+                  onClick={() => requestSort('class_name')}
                   className="flex items-center font-medium"
                 >
-                  Classe {getSortIndicator('class')}
+                  Classe {getSortIndicator('class_name')}
                 </button>
               </th>
-              <th scope="col">Né(e) le</th>
-              <th scope="col">Parent</th>
+              <th scope="col">
+                <button
+                  onClick={() => requestSort('email')}
+                  className="flex items-center font-medium"
+                >
+                  Email {getSortIndicator('email')}
+                </button>
+              </th>
+              <th scope="col">Contact Parent</th>
               <th scope="col" className="text-right">
                 Actions
               </th>
@@ -491,31 +600,23 @@ const AdminStudents: React.FC = () => {
                   <td className="whitespace-nowrap py-4 pl-6 pr-3">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0">
-                        {student.avatar ? (
-                          <img
-                            src={student.avatar}
-                            alt={student.name}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            {student.name.charAt(0)}
-                          </div>
-                        )}
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                        </div>
                       </div>
                       <div className="ml-4">
-                        <div className="font-medium text-neutral-900">{student.name}</div>
+                        <div className="font-medium text-neutral-900">{student.first_name} {student.last_name}</div>
                         <div className="text-xs text-neutral-500">{student.address}</div>
                       </div>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-neutral-900">
                     <span className="inline-flex rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary">
-                      {student.class}
+                      {student.class_name}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-neutral-900">
-                    {formatDateFr(student.birthdate)}
+                    {student.email}
                   </td>
                   <td className="px-3 py-4 text-sm text-neutral-900">
                     <div className="font-medium">{student.parentName}</div>
@@ -523,12 +624,6 @@ const AdminStudents: React.FC = () => {
                     <div className="text-xs text-neutral-500">{student.parentEmail}</div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
-                    <button
-                      className="mr-2 rounded-full p-1 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-                      title="Voir le bulletin"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </button>
                     <button
                       onClick={() =>
                         setModalState({
@@ -563,7 +658,7 @@ const AdminStudents: React.FC = () => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Simplifiée pour l'instant */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-neutral-700">
           Affichage de 1 à {sortedStudents.length} sur {sortedStudents.length} élèves

@@ -47,12 +47,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       icon: <GraduationCap className="h-5 w-5" />, 
       roles: ['admin'] 
     },
-    { 
-      name: 'Attribution des classes', 
-      path: '/admin/class-assignment', 
-      icon: <ClipboardList className="h-5 w-5" />, 
-      roles: ['admin'] 
-    },
+
     
     // Teacher navigation
     { 
