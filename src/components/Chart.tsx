@@ -1,12 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 
-// Mock chart component for demonstration purposes
-// In a real app, you'd use a charting library like Chart.js, ApexCharts, etc.
-const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
+interface ChartProps {
+  type: 'line' | 'bar' | 'pie' | 'doughnut';
+  data: {
+    labels: string[];
+    values: number[];
+    colors?: string[];
+  };
+  height?: number;
+}
+
+const Chart: React.FC<ChartProps> = ({ type, data, height = 250 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !data || !data.labels || !data.values) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -15,29 +23,28 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
     
     // Set canvas size
     canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    canvas.height = height;
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw based on chart type
     if (type === 'line') {
-      drawLineChart(ctx, canvas.width, canvas.height);
+      drawLineChart(ctx, canvas.width, canvas.height, data);
     } else if (type === 'bar') {
-      drawBarChart(ctx, canvas.width, canvas.height);
+      drawBarChart(ctx, canvas.width, canvas.height, data);
     } else if (type === 'pie') {
-      drawPieChart(ctx, canvas.width, canvas.height);
+      drawPieChart(ctx, canvas.width, canvas.height, data);
+    } else if (type === 'doughnut') {
+      drawDoughnutChart(ctx, canvas.width, canvas.height, data);
     }
-  }, [type]);
+  }, [type, data, height]);
   
   // Draw line chart
-  const drawLineChart = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawLineChart = (ctx: CanvasRenderingContext2D, width: number, height: number, data: ChartProps['data']) => {
     const padding = 40;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
-    
-    // Generate random data
-    const data = Array.from({ length: 6 }, () => Math.floor(Math.random() * 60) + 20);
     
     // Draw axes
     ctx.beginPath();
@@ -47,13 +54,16 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
     ctx.strokeStyle = '#d1d5db';
     ctx.stroke();
     
+    // Get max value for scaling
+    const maxValue = Math.max(...data.values) * 1.2; // Add 20% padding
+    
     // Draw points and line
     ctx.beginPath();
-    const pointSpacing = chartWidth / (data.length - 1);
+    const pointSpacing = chartWidth / (data.values.length - 1);
     
-    data.forEach((value, index) => {
+    data.values.forEach((value, index) => {
       const x = padding + index * pointSpacing;
-      const y = height - padding - (value / 100) * chartHeight;
+      const y = height - padding - (value / maxValue) * chartHeight;
       
       if (index === 0) {
         ctx.moveTo(x, y);
@@ -78,29 +88,26 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     
-    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'];
-    
-    data.forEach((_, index) => {
+    data.labels.forEach((label, index) => {
       const x = padding + index * pointSpacing;
-      ctx.fillText(months[index], x, height - padding + 20);
+      ctx.fillText(label, x, height - padding + 20);
     });
     
     // Draw y-axis labels
     ctx.textAlign = 'right';
-    for (let i = 0; i <= 10; i += 2) {
-      const y = height - padding - (i / 10) * chartHeight;
-      ctx.fillText(`${i * 10}`, padding - 10, y + 5);
+    const steps = 5;
+    for (let i = 0; i <= steps; i++) {
+      const value = Math.round((maxValue * i) / steps);
+      const y = height - padding - (i / steps) * chartHeight;
+      ctx.fillText(`${value}`, padding - 10, y + 5);
     }
   };
   
   // Draw bar chart
-  const drawBarChart = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawBarChart = (ctx: CanvasRenderingContext2D, width: number, height: number, data: ChartProps['data']) => {
     const padding = 40;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
-    
-    // Generate random data
-    const data = Array.from({ length: 6 }, () => Math.floor(Math.random() * 60) + 20);
     
     // Draw axes
     ctx.beginPath();
@@ -110,13 +117,16 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
     ctx.strokeStyle = '#d1d5db';
     ctx.stroke();
     
-    // Draw bars
-    const barWidth = (chartWidth / data.length) * 0.8;
-    const barSpacing = (chartWidth / data.length) * 0.2;
+    // Get max value for scaling
+    const maxValue = Math.max(...data.values) * 1.2; // Add 20% padding
     
-    data.forEach((value, index) => {
-      const x = padding + index * (barWidth + barSpacing);
-      const barHeight = (value / 100) * chartHeight;
+    // Draw bars
+    const barWidth = (chartWidth / data.values.length) * 0.8;
+    const barSpacing = (chartWidth / data.values.length) * 0.2;
+    
+    data.values.forEach((value, index) => {
+      const x = padding + index * (barWidth + barSpacing) + barSpacing / 2;
+      const barHeight = (value / maxValue) * chartHeight;
       const y = height - padding - barHeight;
       
       // Create gradient
@@ -126,6 +136,12 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
       
       ctx.fillStyle = gradient;
       ctx.fillRect(x, y, barWidth, barHeight);
+      
+      // Draw value on top of the bar
+      ctx.fillStyle = '#374151';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(value.toString(), x + barWidth / 2, y - 5);
     });
     
     // Draw labels
@@ -133,38 +149,56 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     
-    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'];
-    
-    data.forEach((_, index) => {
-      const x = padding + index * (barWidth + barSpacing) + barWidth / 2;
-      ctx.fillText(months[index], x, height - padding + 20);
+    data.labels.forEach((label, index) => {
+      const x = padding + index * (barWidth + barSpacing) + barWidth / 2 + barSpacing / 2;
+      
+      // Add text wrapping for long labels
+      const words = label.split(' ');
+      let line = '';
+      let y = height - padding + 15;
+      
+      words.forEach(word => {
+        const testLine = line + word + ' ';
+        if (ctx.measureText(testLine).width > barWidth * 1.5) {
+          ctx.fillText(line, x, y);
+          line = word + ' ';
+          y += 15;
+        } else {
+          line = testLine;
+        }
+      });
+      
+      ctx.fillText(line, x, y);
     });
     
     // Draw y-axis labels
     ctx.textAlign = 'right';
-    for (let i = 0; i <= 10; i += 2) {
-      const y = height - padding - (i / 10) * chartHeight;
-      ctx.fillText(`${i * 10}`, padding - 10, y + 5);
+    const steps = 5;
+    for (let i = 0; i <= steps; i++) {
+      const value = Math.round((maxValue * i) / steps);
+      const y = height - padding - (i / steps) * chartHeight;
+      ctx.fillText(`${value}`, padding - 10, y + 5);
     }
   };
   
   // Draw pie chart
-  const drawPieChart = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawPieChart = (ctx: CanvasRenderingContext2D, width: number, height: number, data: ChartProps['data']) => {
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(centerX, centerY) - 40;
     
-    // Generate random data
-    const data = Array.from({ length: 5 }, () => Math.floor(Math.random() * 30) + 10);
-    const total = data.reduce((sum, value) => sum + value, 0);
+    const total = data.values.reduce((sum, value) => sum + value, 0);
     
     // Colors
-    const colors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6', '#ef4444'];
+    const colors = data.colors || [
+      '#3b82f6', '#ef4444', '#f97316', '#22c55e', '#8b5cf6', 
+      '#ec4899', '#06b6d4', '#14b8a6', '#eab308', '#6366f1'
+    ];
     
     // Draw pie segments
     let startAngle = 0;
     
-    data.forEach((value, index) => {
+    data.values.forEach((value, index) => {
       const sliceAngle = (value / total) * 2 * Math.PI;
       
       ctx.beginPath();
@@ -172,7 +206,7 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
       ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
       ctx.closePath();
       
-      ctx.fillStyle = colors[index];
+      ctx.fillStyle = colors[index % colors.length];
       ctx.fill();
       
       // Draw percentage in the middle of the slice
@@ -193,22 +227,15 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
       startAngle += sliceAngle;
     });
     
-    // Draw a white circle in the middle for a donut chart
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * 0.5, 0, 2 * Math.PI);
-    ctx.fillStyle = 'white';
-    ctx.fill();
-    
     // Draw legend
-    const legendItems = ['Mathématiques', 'Français', 'Histoire-Géo', 'Sciences', 'Anglais'];
-    const legendX = centerX - 80;
-    const legendY = centerY - 20;
+    const legendX = centerX - radius;
+    const legendY = height - 30 - data.labels.length * 25;
     
-    legendItems.forEach((item, index) => {
+    data.labels.forEach((label, index) => {
       const y = legendY + index * 25;
       
       // Draw color box
-      ctx.fillStyle = colors[index];
+      ctx.fillStyle = colors[index % colors.length];
       ctx.fillRect(legendX, y, 15, 15);
       
       // Draw label
@@ -216,12 +243,94 @@ const Chart: React.FC<{ type: 'line' | 'bar' | 'pie' }> = ({ type }) => {
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(item, legendX + 25, y + 7);
+      ctx.fillText(`${label} (${data.values[index]})`, legendX + 25, y + 7);
+    });
+  };
+  
+  // Draw doughnut chart (new chart type)
+  const drawDoughnutChart = (ctx: CanvasRenderingContext2D, width: number, height: number, data: ChartProps['data']) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const outerRadius = Math.min(centerX, centerY) - 40;
+    const innerRadius = outerRadius * 0.6; // Inner circle size (hole)
+    
+    const total = data.values.reduce((sum, value) => sum + value, 0);
+    
+    // Colors
+    const colors = data.colors || [
+      '#3b82f6', '#ef4444', '#f97316', '#22c55e', '#8b5cf6', 
+      '#ec4899', '#06b6d4', '#14b8a6', '#eab308', '#6366f1'
+    ];
+    
+    // Draw segments
+    let startAngle = 0;
+    
+    data.values.forEach((value, index) => {
+      const sliceAngle = (value / total) * 2 * Math.PI;
+      
+      // Draw segment
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, outerRadius, startAngle, startAngle + sliceAngle);
+      ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
+      ctx.closePath();
+      
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.fill();
+      
+      // Draw percentage in the middle of the segment
+      const midAngle = startAngle + sliceAngle / 2;
+      const x = centerX + Math.cos(midAngle) * (outerRadius + innerRadius) / 2;
+      const y = centerY + Math.sin(midAngle) * (outerRadius + innerRadius) / 2;
+      
+      const percentage = Math.round((value / total) * 100);
+      
+      if (percentage > 5) {
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${percentage}%`, x, y);
+      }
+      
+      startAngle += sliceAngle;
+    });
+    
+    // Draw center info
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Total:`, centerX, centerY - 10);
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`${total}`, centerX, centerY + 15);
+    
+    // Draw legend
+    const legendX = width - 160;
+    const legendY = 20;
+    
+    data.labels.forEach((label, index) => {
+      const y = legendY + index * 25;
+      
+      // Draw color box
+      ctx.fillStyle = colors[index % colors.length];
+      ctx.fillRect(legendX, y, 15, 15);
+      
+      // Draw label with value
+      ctx.fillStyle = '#374151';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${label} (${data.values[index]})`, legendX + 25, y + 7);
     });
   };
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-full w-full">
       <canvas ref={canvasRef} className="h-full w-full"></canvas>
     </div>
   );

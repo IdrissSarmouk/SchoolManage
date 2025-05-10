@@ -1,158 +1,74 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
-// Define the user type with role information
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'teacher' | 'student';
-};
+// Create the context
+const AuthContext = createContext(null);
 
-// Define the context type
-type AuthContextType = {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, role: 'teacher' | 'student') => Promise<void>;
-  logout: () => void;
-  error: string | null;
-};
-
-// Create the context with default values
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  login: async () => {},
-  register: async () => {},
-  logout: () => {},
-  error: null,
-});
-
-// Mock user data for demonstration purposes
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@school.com',
-    password: 'admin123',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    name: 'Teacher User',
-    email: 'teacher@school.com',
-    password: 'teacher123',
-    role: 'teacher',
-  },
-  {
-    id: '3',
-    name: 'Student User',
-    email: 'student@school.com',
-    password: 'student123',
-    role: 'student',
-  },
-];
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Check if user is logged in when the app loads
   useEffect(() => {
-    // Check for saved session in localStorage
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const checkAuth = () => {
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Failed to parse user data", error);
+          // Invalid user data, clear it
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+      
+      setIsLoading(false);
+    };
+    
+    checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find user with matching credentials
-      const foundUser = MOCK_USERS.find(
-        u => u.email === email && u.password === password
-      );
-      
-      if (foundUser) {
-        // Remove password from user object before storing
-        const { password, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword as User);
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      } else {
-        throw new Error('Invalid email or password');
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  // Login function to set user and token
+  const login = (userData, token) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    setIsAuthenticated(true);
   };
 
-  const register = async (email: string, password: string, name: string, role: 'teacher' | 'student') => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Simulate API request delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if user already exists
-      if (MOCK_USERS.some(u => u.email === email)) {
-        throw new Error('User already exists');
-      }
-      
-      // Create new user
-      const newUser = {
-        id: String(MOCK_USERS.length + 1),
-        name,
-        email,
-        password,
-        role,
-      };
-      
-      // Add to mock users
-      MOCK_USERS.push(newUser);
-      
-      // Log in the new user
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword as User);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Logout function to clear user and token
   const logout = () => {
-    setUser(null);
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  const value = {
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    logout
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        register,
-        logout,
-        error,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

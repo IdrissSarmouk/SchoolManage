@@ -1,32 +1,45 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 import { School, ChevronRight } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, error: authError } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setAuthError(null);
+
     try {
-      await login(email, password);
-      
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      if (storedUser.role === 'admin') {
+      const response = await axios.post('http://localhost:3000/api/login', {
+        email,
+        password,
+      });
+
+      const { token, user } = response.data;
+
+      // Store in localStorage
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Redirect by role
+      if (user.role === 'admin') {
         navigate('/admin/dashboard');
-      } else if (storedUser.role === 'teacher') {
-        navigate('/teacher/dashboard');
+      } else if (user.role === 'teacher') {
+        navigate('/teacher/Dashboard');
+      } else if (user.role === 'student') {
+        navigate('/student/Dashboard');
       } else {
-        navigate('/student/dashboard');
+        navigate('/'); // fallback if role is unknown
       }
-    } catch (err) {
-      console.error('Login error:', err);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setAuthError(error.response?.data?.error || 'Erreur de connexion');
     } finally {
       setIsLoading(false);
     }
@@ -34,7 +47,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-neutral-50">
-      {/* Left side - Image */}
+      {/* Left side */}
       <div className="hidden w-1/2 bg-primary lg:block">
         <div className="flex h-full flex-col items-center justify-center px-8 text-white">
           <School className="mb-6 h-24 w-24" />
@@ -65,7 +78,7 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Right side - Login form */}
       <div className="w-full lg:w-1/2">
         <div className="flex h-full flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
@@ -74,22 +87,22 @@ const Login: React.FC = () => {
               <School className="mx-auto h-12 w-12 text-primary" />
               <h2 className="mt-2 text-2xl font-bold text-neutral-900">SchoolManager</h2>
             </div>
-            
+
             <div className="mb-8 text-center">
               <h2 className="text-2xl font-bold text-neutral-900 lg:text-3xl">Connexion</h2>
               <p className="mt-2 text-sm text-neutral-600">
                 Accédez à votre espace personnel
               </p>
             </div>
-            
+
             <div className="mb-6 rounded-lg bg-white p-8 shadow-sm">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {authError && (
-                  <div className="rounded-md bg-error/10 p-3 text-sm text-error">
+                  <div className="rounded-md bg-red-100 p-3 text-sm text-red-600">
                     {authError}
                   </div>
                 )}
-                
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
                     Email
@@ -103,7 +116,7 @@ const Login: React.FC = () => {
                     className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
                     Mot de passe
@@ -117,20 +130,7 @@ const Login: React.FC = () => {
                     className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
                   />
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      id="remember_me"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
-                    />
-                    <label htmlFor="remember_me" className="ml-2 block text-sm text-neutral-700">
-                      Se souvenir de moi
-                    </label>
-                  </div>
-                </div>
-                
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -139,7 +139,7 @@ const Login: React.FC = () => {
                   {isLoading ? 'Connexion...' : 'Se connecter'}
                 </button>
               </form>
-              
+
               <p className="mt-4 text-center text-sm text-neutral-600">
                 Pas de compte ?{' '}
                 <Link to="/signup" className="font-medium text-primary hover:text-primary-light">

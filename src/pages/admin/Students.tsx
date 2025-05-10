@@ -7,61 +7,33 @@ const MOCK_STUDENTS = [
     id: 1,
     name: 'Lucas Dupont',
     class: '3ème A',
-    birthdate: '2008-05-12',
-    parentName: 'Marie Dupont',
-    parentEmail: 'marie.dupont@email.com',
-    parentPhone: '06 12 34 56 78',
-    address: '15 rue des Lilas, 75001 Paris',
   },
   {
     id: 2,
     name: 'Emma Martin',
     class: '4ème B',
-    birthdate: '2009-03-24',
-    parentName: 'Thomas Martin',
-    parentEmail: 'thomas.martin@email.com',
-    parentPhone: '06 23 45 67 89',
-    address: '8 avenue Victor Hugo, 75016 Paris',
   },
   {
     id: 3,
     name: 'Noah Bernard',
     class: '6ème C',
-    birthdate: '2011-09-15',
-    parentName: 'Sophie Bernard',
-    parentEmail: 'sophie.bernard@email.com',
-    parentPhone: '06 34 56 78 90',
-    address: '25 rue du Commerce, 75015 Paris',
+   
   },
   {
     id: 4,
     name: 'Chloé Petit',
     class: '5ème A',
-    birthdate: '2010-12-03',
-    parentName: 'Philippe Petit',
-    parentEmail: 'philippe.petit@email.com',
-    parentPhone: '06 45 67 89 01',
-    address: '12 boulevard Saint-Michel, 75005 Paris',
+   
   },
   {
     id: 5,
     name: 'Hugo Laurent',
     class: '3ème B',
-    birthdate: '2008-07-21',
-    parentName: 'Julie Laurent',
-    parentEmail: 'julie.laurent@email.com',
-    parentPhone: '06 56 78 90 12',
-    address: '5 rue de Rivoli, 75004 Paris',
   },
   {
     id: 6,
     name: 'Léa Moreau',
     class: '4ème A',
-    birthdate: '2009-11-30',
-    parentName: 'David Moreau',
-    parentEmail: 'david.moreau@email.com',
-    parentPhone: '06 67 89 01 23',
-    address: '18 rue des Pyrénées, 75020 Paris',
   },
 ];
 
@@ -76,11 +48,6 @@ const StudentModal = ({ isOpen, type, student, onClose, onSubmit }) => {
     student || {
       name: '',
       class: '',
-      birthdate: '',
-      parentName: '',
-      parentEmail: '',
-      parentPhone: '',
-      address: '',
     }
   );
 

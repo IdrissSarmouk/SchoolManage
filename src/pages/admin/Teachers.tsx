@@ -1,60 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Pencil, Trash2, X, ChevronDown, Filter } from 'lucide-react';
-
-// Mock data for teachers
-const MOCK_TEACHERS = [
-  {
-    id: 1,
-    name: 'Sophie Martin',
-    email: 'sophie.martin@school.com',
-    subject: 'Mathématiques',
-    classes: ['6ème A', '5ème B', '4ème A'],
-    phone: '06 12 34 56 78',
-    startDate: '2018-09-01',
-  },
-  {
-    id: 2,
-    name: 'Thomas Bernard',
-    email: 'thomas.bernard@school.com',
-    subject: 'Histoire-Géographie',
-    classes: ['6ème B', '5ème A', '3ème C'],
-    phone: '06 23 45 67 89',
-    startDate: '2015-09-01',
-  },
-  {
-    id: 3,
-    name: 'Marie Laurent',
-    email: 'marie.laurent@school.com',
-    subject: 'Français',
-    classes: ['4ème B', '3ème A', '3ème B'],
-    phone: '06 34 56 78 90',
-    startDate: '2019-09-01',
-  },
-  {
-    id: 4,
-    name: 'Pierre Dubois',
-    email: 'pierre.dubois@school.com',
-    subject: 'Sciences',
-    classes: ['6ème C', '5ème C', '4ème C'],
-    phone: '06 45 67 89 01',
-    startDate: '2017-09-01',
-  },
-  {
-    id: 5,
-    name: 'Julie Moreau',
-    email: 'julie.moreau@school.com',
-    subject: 'Anglais',
-    classes: ['6ème A', '5ème A', '4ème A', '3ème A'],
-    phone: '06 56 78 90 12',
-    startDate: '2020-09-01',
-  },
-];
 
 // Available subjects for filtering
 const SUBJECTS = [
-  'Mathématiques',
+  'Mathematiques',
   'Français',
-  'Histoire-Géographie',
+  'Histoire Geographie',
   'Sciences',
   'Anglais',
   'Arabe',
@@ -71,14 +22,34 @@ const CLASSES = [
 const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
   const [formData, setFormData] = useState(
     teacher || {
-      name: '',
+      first_name: '',
+      last_name: '',
       email: '',
-      subject: '',
-      classes: [],
+      password: '', // Ajout du champ password pour la création
+      subject_name: '',
+      class_names: [],
       phone: '',
       startDate: '',
     }
   );
+
+  // Reset form when modal opens with new data
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(
+        teacher || {
+          first_name: '',
+          last_name: '',
+          email: '',
+          password: '',
+          subject_name: '',
+          class_names: [],
+          phone: '',
+          startDate: '',
+        }
+      );
+    }
+  }, [isOpen, teacher]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -86,11 +57,11 @@ const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
   };
 
   const handleClassChange = (className) => {
-    const newClasses = formData.classes.includes(className)
-      ? formData.classes.filter((c) => c !== className)
-      : [...formData.classes, className];
+    const newClasses = formData.class_names.includes(className)
+      ? formData.class_names.filter((c) => c !== className)
+      : [...formData.class_names, className];
     
-    setFormData({ ...formData, classes: newClasses });
+    setFormData({ ...formData, class_names: newClasses });
   };
 
   const handleSubmit = (e) => {
@@ -114,14 +85,29 @@ const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-neutral-700">
-              Nom complet
+            <label htmlFor="first_name" className="block text-sm font-medium text-neutral-700">
+              Prénom
             </label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              id="first_name"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="last_name" className="block text-sm font-medium text-neutral-700">
+              Nom
+            </label>
+            <input
+              type="text"
+              id="last_name"
+              name="last_name"
+              value={formData.last_name}
               onChange={handleChange}
               required
               className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
@@ -143,14 +129,31 @@ const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
             />
           </div>
           
+          {type === 'add' && (
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required={type === 'add'}
+                className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+              />
+            </div>
+          )}
+          
           <div>
-            <label htmlFor="subject" className="block text-sm font-medium text-neutral-700">
+            <label htmlFor="subject_name" className="block text-sm font-medium text-neutral-700">
               Matière
             </label>
             <select
-              id="subject"
-              name="subject"
-              value={formData.subject}
+              id="subject_name"
+              name="subject_name"
+              value={formData.subject_name}
               onChange={handleChange}
               required
               className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
@@ -174,7 +177,7 @@ const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
                   <input
                     type="checkbox"
                     id={`class-${className}`}
-                    checked={formData.classes.includes(className)}
+                    checked={formData.class_names.includes(className)}
                     onChange={() => handleClassChange(className)}
                     className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
                   />
@@ -186,35 +189,9 @@ const TeacherModals = ({ isOpen, type, teacher, onClose, onSubmit }) => {
             </div>
           </div>
           
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-neutral-700">
-              Téléphone
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-            />
-          </div>
           
-          <div>
-            <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700">
-              Date d'embauche
-            </label>
-            <input
-              type="date"
-              id="startDate"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-            />
-          </div>
+          
+
           
           <div className="flex justify-end space-x-3 pt-4">
             <button
@@ -249,8 +226,11 @@ const DeleteConfirmation = ({ isOpen, teacher, onClose, onConfirm }) => {
           </div>
           <h2 className="mt-2 text-xl font-semibold text-neutral-900">Supprimer l'enseignant</h2>
           <p className="mt-2 text-sm text-neutral-600">
-            Êtes-vous sûr de vouloir supprimer l'enseignant <span className="font-medium">{teacher?.name}</span> ? 
-            Cette action ne peut pas être annulée.
+            Êtes-vous sûr de vouloir supprimer l'enseignant{' '}
+            <span className="font-medium">
+              {teacher?.first_name} {teacher?.last_name}
+            </span>
+            ? Cette action ne peut pas être annulée.
           </p>
         </div>
         
@@ -378,8 +358,20 @@ const TeacherFilters = ({ filters, setFilters, isOpen, onClose }) => {
   );
 };
 
+// Type pour un enseignant
+interface Teacher {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  subject: string;
+  classes: string[];
+}
+
 const AdminTeachers: React.FC = () => {
-  const [teachers, setTeachers] = useState(MOCK_TEACHERS);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalState, setModalState] = useState({ isOpen: false, type: null, teacher: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, teacher: null });
@@ -387,10 +379,44 @@ const AdminTeachers: React.FC = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
-  // Filter teachers based on search query and filters
+  // Chargement initial des enseignants
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:3000/api/teachers');
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Transformation des données pour correspondre à notre modèle d'interface
+        const formattedTeachers = data.map(teacher => ({
+          id: teacher.id,
+          first_name: teacher.first_name,
+          last_name: teacher.last_name,
+          email: teacher.email || '',
+          subject: teacher.subject,
+          classes: teacher.classes || []
+        }));
+        
+        setTeachers(formattedTeachers);
+      } catch (err) {
+        setError(`Erreur lors du chargement des enseignants: ${err.message}`);
+        console.error('Erreur lors du chargement des enseignants:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeachers();
+  }, []);
+
+  // Filtrer les enseignants
   const filteredTeachers = teachers.filter((teacher) => {
+    const fullName = `${teacher.first_name} ${teacher.last_name}`.toLowerCase();
     const matchesSearch = 
-      teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      fullName.includes(searchQuery.toLowerCase()) ||
       teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       teacher.subject.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -403,11 +429,24 @@ const AdminTeachers: React.FC = () => {
     return matchesSearch && matchesSubject && matchesClass;
   });
 
-  // Sort teachers based on sort config
+  // Trier les enseignants
   const sortedTeachers = React.useMemo(() => {
     let sortableTeachers = [...filteredTeachers];
     if (sortConfig.key) {
       sortableTeachers.sort((a, b) => {
+        // Pour les noms complets
+        if (sortConfig.key === 'name') {
+          const aName = `${a.first_name} ${a.last_name}`;
+          const bName = `${b.first_name} ${b.last_name}`;
+          if (aName < bName) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aName > bName) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          return 0;
+        }
+        
         if (a[sortConfig.key] < b[sortConfig.key]) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
@@ -433,26 +472,102 @@ const AdminTeachers: React.FC = () => {
     return sortConfig.direction === 'ascending' ? '↑' : '↓';
   };
 
-  const handleAddTeacher = (teacher) => {
-    const newTeacher = {
-      ...teacher,
-      id: teachers.length + 1,
-      avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
-    };
-    setTeachers([...teachers, newTeacher]);
-    setModalState({ isOpen: false, type: null, teacher: null });
+  const handleAddTeacher = async (teacherData) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/teachers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(teacherData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'ajout de l\'enseignant');
+      }
+
+      // Recharger la liste des enseignants après l'ajout
+      const teachersResponse = await fetch('http://localhost:3000/api/teachers');
+      const updatedTeachers = await teachersResponse.json();
+      
+      const formattedTeachers = updatedTeachers.map(teacher => ({
+        id: teacher.id,
+        first_name: teacher.first_name,
+        last_name: teacher.last_name,
+        email: teacher.email || '',
+        subject: teacher.subject,
+        classes: teacher.classes || []
+      }));
+      
+      setTeachers(formattedTeachers);
+      setModalState({ isOpen: false, type: null, teacher: null });
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout de l\'enseignant:', err);
+      alert(`Erreur: ${err.message}`);
+    }
   };
 
-  const handleEditTeacher = (teacher) => {
-    setTeachers(
-      teachers.map((t) => (t.id === teacher.id ? { ...t, ...teacher } : t))
-    );
-    setModalState({ isOpen: false, type: null, teacher: null });
+  const handleEditTeacher = async (teacherData) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/teachers/${teacherData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: teacherData.first_name,
+          last_name: teacherData.last_name,
+          email: teacherData.email,
+          subject_name: teacherData.subject_name,
+          class_names: teacherData.class_names,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la mise à jour de l\'enseignant');
+      }
+
+      // Recharger la liste des enseignants après la mise à jour
+      const teachersResponse = await fetch('http://localhost:3000/api/teachers');
+      const updatedTeachers = await teachersResponse.json();
+      
+      const formattedTeachers = updatedTeachers.map(teacher => ({
+        id: teacher.id,
+        first_name: teacher.first_name,
+        last_name: teacher.last_name,
+        email: teacher.email || '',
+        subject: teacher.subject,
+        classes: teacher.classes || []
+      }));
+      
+      setTeachers(formattedTeachers);
+      setModalState({ isOpen: false, type: null, teacher: null });
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour de l\'enseignant:', err);
+      alert(`Erreur: ${err.message}`);
+    }
   };
 
-  const handleDeleteTeacher = (id) => {
-    setTeachers(teachers.filter((t) => t.id !== id));
-    setDeleteModal({ isOpen: false, teacher: null });
+  const handleDeleteTeacher = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/teachers/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la suppression de l\'enseignant');
+      }
+
+      // Filtrer l'enseignant supprimé de notre state local
+      setTeachers(teachers.filter((t) => t.id !== id));
+      setDeleteModal({ isOpen: false, teacher: null });
+    } catch (err) {
+      console.error('Erreur lors de la suppression de l\'enseignant:', err);
+      alert(`Erreur: ${err.message}`);
+    }
   };
 
   const handleSubmit = (formData) => {
@@ -462,6 +577,14 @@ const AdminTeachers: React.FC = () => {
       handleEditTeacher(formData);
     }
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Chargement des enseignants...</div>;
+  }
+
+  if (error) {
+    return <div className="text-error p-4">{error}</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -532,7 +655,6 @@ const AdminTeachers: React.FC = () => {
                 </button>
               </th>
               <th scope="col">Classes</th>
-              <th scope="col">Contact</th>
               <th scope="col" className="text-right">
                 Actions
               </th>
@@ -545,20 +667,14 @@ const AdminTeachers: React.FC = () => {
                   <td className="whitespace-nowrap py-4 pl-6 pr-3">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0">
-                        {teacher.avatar ? (
-                          <img
-                            src={teacher.avatar}
-                            alt={teacher.name}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            {teacher.name.charAt(0)}
-                          </div>
-                        )}
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          {teacher.first_name.charAt(0)}
+                        </div>
                       </div>
                       <div className="ml-4">
-                        <div className="font-medium text-neutral-900">{teacher.name}</div>
+                        <div className="font-medium text-neutral-900">
+                          {teacher.first_name} {teacher.last_name}
+                        </div>
                         <div className="text-xs text-neutral-500">{teacher.email}</div>
                       </div>
                     </div>
@@ -568,7 +684,7 @@ const AdminTeachers: React.FC = () => {
                   </td>
                   <td className="px-3 py-4 text-sm text-neutral-900">
                     <div className="flex flex-wrap gap-1">
-                      {teacher.classes.map((cls) => (
+                      {teacher.classes && teacher.classes.map((cls) => (
                         <span
                           key={cls}
                           className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-0.5 text-xs font-medium text-secondary"
@@ -578,19 +694,18 @@ const AdminTeachers: React.FC = () => {
                       ))}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-neutral-900">
-                    <div>{teacher.phone}</div>
-                    <div className="text-xs text-neutral-500">
-                      Depuis {new Date(teacher.startDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
-                    </div>
-                  </td>
+                  
                   <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
                     <button
                       onClick={() =>
                         setModalState({
                           isOpen: true,
                           type: 'edit',
-                          teacher: teacher,
+                          teacher: {
+                            ...teacher,
+                            subject_name: teacher.subject,
+                            class_names: teacher.classes || [],
+                          },
                         })
                       }
                       className="mr-3 rounded-full p-1 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
@@ -609,7 +724,7 @@ const AdminTeachers: React.FC = () => {
                 </tr>
               ))
             ) : (
-              <tr>
+             <tr>
                 <td colSpan={5} className="px-6 py-4 text-center text-sm text-neutral-500">
                   Aucun enseignant trouvé
                 </td>
@@ -619,27 +734,8 @@ const AdminTeachers: React.FC = () => {
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-neutral-700">
-          Affichage de 1 à {sortedTeachers.length} sur {sortedTeachers.length} enseignants
-        </div>
-        <div className="flex space-x-1">
-          <button
-            disabled
-            className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Précédent
-          </button>
-          <button
-            disabled
-            className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Suivant
-          </button>
-        </div>
-      </div>
-
+      {/* Pagination options can go here if needed */}
+      
       {/* Modals */}
       <TeacherModals
         isOpen={modalState.isOpen}
