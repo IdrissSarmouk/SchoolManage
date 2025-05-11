@@ -1,64 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Search, Check, X, AlertTriangle, Save, Clock } from 'lucide-react';
-
-// Mock data for classes taught by the teacher
-const TEACHER_CLASSES = [
-  { id: 1, name: '3ème A', subject: 'Mathématiques' },
-  { id: 2, name: '5ème B', subject: 'Mathématiques' },
-  { id: 3, name: '4ème C', subject: 'Mathématiques' },
-  { id: 4, name: '6ème A', subject: 'Mathématiques' },
-];
-
-// Mock data for students in classes
-const generateStudentsForClass = (classId) => {
-  const studentCount = 15 + Math.floor(Math.random() * 10); // 15-24 students per class
-  const students = [];
-  
-  for (let i = 1; i <= studentCount; i++) {
-    students.push({
-      id: `${classId}-${i}`,
-      name: `Élève ${i}`,
-    });
-  }
-  
-  return students;
-};
+import { useAuth } from '../../contexts/AuthContext';
 
 // Attendance statuses
 const ATTENDANCE_STATUSES = {
   PRESENT: 'present',
   ABSENT: 'absent',
   LATE: 'late',
-  EXCUSED: 'excused',
-};
-
-// Generate random attendance records for a class
-const generateAttendanceForDate = (students, date) => {
-  const attendance = {};
-  
-  students.forEach(student => {
-    // Generate a random status weighted towards present
-    const random = Math.random();
-    let status;
-    
-    if (random < 0.8) {
-      status = ATTENDANCE_STATUSES.PRESENT;
-    } else if (random < 0.9) {
-      status = ATTENDANCE_STATUSES.ABSENT;
-    } else if (random < 0.95) {
-      status = ATTENDANCE_STATUSES.LATE;
-    } else {
-      status = ATTENDANCE_STATUSES.EXCUSED;
-    }
-    
-    attendance[student.id] = {
-      status,
-      minutes: status === ATTENDANCE_STATUSES.LATE ? Math.floor(Math.random() * 30) + 5 : 0,
-      reason: status === ATTENDANCE_STATUSES.EXCUSED ? 'Medical appointment' : '',
-    };
-  });
-  
-  return attendance;
+  NONE: 'none'
 };
 
 const AttendanceCalendar = ({ currentDate, onDateChange }) => {
@@ -193,8 +142,10 @@ const AttendanceCalendar = ({ currentDate, onDateChange }) => {
   );
 };
 
-const TeacherAttendance: React.FC = () => {
-  const [selectedClass, setSelectedClass] = useState(TEACHER_CLASSES[0]);
+const TeacherAttendance = () => {
+  const { user } = useAuth();
+  const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [students, setStudents] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
@@ -202,169 +153,172 @@ const TeacherAttendance: React.FC = () => {
   const [editingAttendance, setEditingAttendance] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
-  // Generate a unique key for the attendance records based on date and class
-  const getAttendanceKey = (date, classId) => {
-    return `${date.toISOString().split('T')[0]}-${classId}`;
-  };
-  
-  // Load students and attendance data when selected class or date changes
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch teacher's classes
   useEffect(() => {
-    if (selectedClass) {
-      const newStudents = generateStudentsForClass(selectedClass.id);
-      setStudents(newStudents);
-      
-      const key = getAttendanceKey(currentDate, selectedClass.id);
-      if (!attendanceData[key]) {
-        // Only generate new attendance data if we don't already have it
-        setAttendanceData({
-          ...attendanceData,
-          [key]: generateAttendanceForDate(newStudents, currentDate)
+    const fetchClasses = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/teachers/${user.id}/classes`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         });
+        
+        if (!response.ok) throw new Error('Failed to fetch classes');
+        const data = await response.json();
+        setClasses(data);
+        setSelectedClass(data[0]);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    if (user?.id) fetchClasses();
+  }, [user]);
+
+  // Fetch students and attendance when class or date changes
+  useEffect(() => {
+    const fetchStudentsAndAttendance = async () => {
+      if (!selectedClass) return;
+
+      try {
+        // Fetch students
+        const studentsRes = await fetch(
+          `http://localhost:3000/api/teachers/${user.id}/classes/${selectedClass.id}/students`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        if (!studentsRes.ok) throw new Error('Failed to fetch students');
+        const studentsData = await studentsRes.json();
+        setStudents(studentsData);
+
+        // Fetch attendance
+        const dateString = currentDate.toISOString().split('T')[0];
+        const attendanceRes = await fetch(
+          `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        if (!attendanceRes.ok) throw new Error('Failed to fetch attendance');
+        const attendanceData = await attendanceRes.json();
+        
+        // Format attendance data
+        const formattedAttendance = {};
+        attendanceData.forEach(record => {
+          formattedAttendance[record.student_id] = {
+            status: record.status || ATTENDANCE_STATUSES.NONE
+          };
+        });
+        
+        setAttendanceData(formattedAttendance);
+        setEditingAttendance(false);
+        setUnsavedChanges(false);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchStudentsAndAttendance();
+  }, [selectedClass, currentDate, user]);
+
+  const handleClassChange = (classId) => {
+    const newClass = classes.find(c => c.id === parseInt(classId));
+    setSelectedClass(newClass);
+  };
+
+  const saveAttendance = async () => {
+    try {
+      const records = Object.entries(attendanceData).map(([studentId, data]) => ({
+        studentId: parseInt(studentId),
+        subjectId: selectedClass.subject_id,
+        date: currentDate.toISOString().split('T')[0],
+        status: data.status
+      }));
+
+      const response = await fetch('http://localhost:3000/api/attendance/bulk-record', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ records })
+      });
+
+      if (!response.ok) throw new Error('Failed to save attendance');
       
       setEditingAttendance(false);
       setUnsavedChanges(false);
-    }
-  }, [selectedClass, currentDate]);
-  
-  // Filter students based on search query
-  const filteredStudents = students.filter((student) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const handleClassChange = (classId) => {
-    const newClass = TEACHER_CLASSES.find((c) => c.id === parseInt(classId));
-    if (newClass) {
-      setSelectedClass(newClass);
+      setSuccessMessage('Présences enregistrées avec succès !');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message);
     }
   };
-  
+
   const toggleEditingAttendance = () => {
     if (editingAttendance && unsavedChanges) {
       if (window.confirm('Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir annuler ?')) {
-        // Reset attendance to the previous state
-        const key = getAttendanceKey(currentDate, selectedClass.id);
-        if (attendanceData[key]) {
-          const originalAttendance = { ...attendanceData[key] };
-          setAttendanceData({
-            ...attendanceData,
-            [key]: originalAttendance
-          });
-        }
         setEditingAttendance(false);
         setUnsavedChanges(false);
+        // Refetch the attendance data to reset changes
+        const fetchStudentsAndAttendance = async () => {
+          if (!selectedClass) return;
+
+          try {
+            const dateString = currentDate.toISOString().split('T')[0];
+            const attendanceRes = await fetch(
+              `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+              }
+            );
+            
+            if (!attendanceRes.ok) throw new Error('Failed to fetch attendance');
+            const attendanceData = await attendanceRes.json();
+            
+            // Format attendance data
+            const formattedAttendance = {};
+            attendanceData.forEach(record => {
+              formattedAttendance[record.student_id] = {
+                status: record.status || ATTENDANCE_STATUSES.NONE
+              };
+            });
+            
+            setAttendanceData(formattedAttendance);
+          } catch (err) {
+            setError(err.message);
+          }
+        };
+
+        fetchStudentsAndAttendance();
       }
     } else {
       setEditingAttendance(!editingAttendance);
     }
   };
-  
+
   const handleAttendanceChange = (studentId, status) => {
-    const key = getAttendanceKey(currentDate, selectedClass.id);
-    
-    let minutes = 0;
-    let reason = '';
-    
-    // If changing to late, set default minutes
-    if (status === ATTENDANCE_STATUSES.LATE) {
-      minutes = 5;
-    }
-    
-    // Keep the existing minutes/reason if available
-    if (attendanceData[key][studentId]) {
-      if (status === ATTENDANCE_STATUSES.LATE && attendanceData[key][studentId].status === ATTENDANCE_STATUSES.LATE) {
-        minutes = attendanceData[key][studentId].minutes;
-      }
-      if (status === ATTENDANCE_STATUSES.EXCUSED && attendanceData[key][studentId].status === ATTENDANCE_STATUSES.EXCUSED) {
-        reason = attendanceData[key][studentId].reason;
-      }
-    }
-    
-    setAttendanceData({
-      ...attendanceData,
-      [key]: {
-        ...attendanceData[key],
-        [studentId]: {
-          status,
-          minutes,
-          reason
-        }
-      }
-    });
+    setAttendanceData(prev => ({
+      ...prev,
+      [studentId]: { status }
+    }));
     setUnsavedChanges(true);
   };
-  
-  const handleLateMinutesChange = (studentId, minutes) => {
-    const key = getAttendanceKey(currentDate, selectedClass.id);
-    
-    // Ensure minutes is a valid number between 1 and 120
-    let newMinutes = parseInt(minutes, 10);
-    if (isNaN(newMinutes) || newMinutes < 1) newMinutes = 1;
-    if (newMinutes > 120) newMinutes = 120;
-    
-    setAttendanceData({
-      ...attendanceData,
-      [key]: {
-        ...attendanceData[key],
-        [studentId]: {
-          ...attendanceData[key][studentId],
-          minutes: newMinutes
-        }
-      }
-    });
-    setUnsavedChanges(true);
-  };
-  
-  const handleReasonChange = (studentId, reason) => {
-    const key = getAttendanceKey(currentDate, selectedClass.id);
-    
-    setAttendanceData({
-      ...attendanceData,
-      [key]: {
-        ...attendanceData[key],
-        [studentId]: {
-          ...attendanceData[key][studentId],
-          reason
-        }
-      }
-    });
-    setUnsavedChanges(true);
-  };
-  
-  const saveAttendance = () => {
-    // In a real app, this would save to the backend
-    console.log('Saving attendance:', attendanceData[getAttendanceKey(currentDate, selectedClass.id)]);
-    setEditingAttendance(false);
-    setUnsavedChanges(false);
-    setSuccessMessage('Présences enregistrées avec succès !');
-    
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 3000);
-  };
-  
-  // Get attendance stats for the current view
-  const getAttendanceStats = () => {
-    const key = getAttendanceKey(currentDate, selectedClass.id);
-    if (!attendanceData[key]) return { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
-    
-    const stats = {
-      present: 0,
-      absent: 0,
-      late: 0,
-      excused: 0,
-      total: Object.keys(attendanceData[key]).length
-    };
-    
-    Object.values(attendanceData[key]).forEach(record => {
-      stats[record.status]++;
-    });
-    
-    return stats;
-  };
-  
+
   // Format the current date for display
   const formatCurrentDate = () => {
     return currentDate.toLocaleDateString('fr-FR', {
@@ -374,8 +328,47 @@ const TeacherAttendance: React.FC = () => {
       year: 'numeric'
     });
   };
-  
+
+  // Filter students based on search query
+  const filteredStudents = students.filter((student) =>
+    `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Get attendance stats for the current view
+  const getAttendanceStats = () => {
+    if (!attendanceData) return { present: 0, absent: 0, late: 0, none: 0, total: 0 };
+    
+    const stats = {
+      present: 0,
+      absent: 0,
+      late: 0,
+      none: 0,
+      total: Object.keys(attendanceData).length
+    };
+    
+    Object.values(attendanceData).forEach(record => {
+      stats[record.status]++;
+    });
+    
+    return stats;
+  };
+
   const stats = getAttendanceStats();
+
+  if (loading) {
+    return <div className="text-center py-4">Chargement...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 p-4 rounded-md">
+        <div className="flex items-center text-red-600">
+          <AlertTriangle className="mr-2 h-5 w-5" />
+          <span>{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -389,13 +382,13 @@ const TeacherAttendance: React.FC = () => {
             <div className="relative inline-block text-left">
               <select
                 id="class-selector"
-                value={selectedClass.id}
+                value={selectedClass?.id}
                 onChange={(e) => handleClassChange(e.target.value)}
                 className="block w-40 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                {TEACHER_CLASSES.map((cls) => (
+                {classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>
-                    {cls.name} - {cls.subject}
+                    {cls.name} - {cls.subject_name}
                   </option>
                 ))}
               </select>
@@ -458,51 +451,12 @@ const TeacherAttendance: React.FC = () => {
       
       {/* Attendance content */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        {/* Left side - Calendar and stats */}
-        <div className="space-y-6 lg:col-span-1">
+        {/* Left side - Calendar */}
+        <div className="lg:col-span-1">
           <AttendanceCalendar
             currentDate={currentDate}
             onDateChange={setCurrentDate}
           />
-          
-          {/* Attendance statistics */}
-          <div className="card space-y-4">
-            <h3 className="text-lg font-semibold text-neutral-900">Statistiques</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-md bg-success/10 p-3 text-center">
-                <p className="text-sm font-medium text-success">Présents</p>
-                <p className="mt-1 text-xl font-bold text-success">{stats.present}</p>
-                <p className="text-xs text-success/70">
-                  {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}%
-                </p>
-              </div>
-              
-              <div className="rounded-md bg-error/10 p-3 text-center">
-                <p className="text-sm font-medium text-error">Absents</p>
-                <p className="mt-1 text-xl font-bold text-error">{stats.absent}</p>
-                <p className="text-xs text-error/70">
-                  {stats.total > 0 ? Math.round((stats.absent / stats.total) * 100) : 0}%
-                </p>
-              </div>
-              
-              <div className="rounded-md bg-warning/10 p-3 text-center">
-                <p className="text-sm font-medium text-warning">En retard</p>
-                <p className="mt-1 text-xl font-bold text-warning">{stats.late}</p>
-                <p className="text-xs text-warning/70">
-                  {stats.total > 0 ? Math.round((stats.late / stats.total) * 100) : 0}%
-                </p>
-              </div>
-              
-              <div className="rounded-md bg-primary/10 p-3 text-center">
-                <p className="text-sm font-medium text-primary">Excusés</p>
-                <p className="mt-1 text-xl font-bold text-primary">{stats.excused}</p>
-                <p className="text-xs text-primary/70">
-                  {stats.total > 0 ? Math.round((stats.excused / stats.total) * 100) : 0}%
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
         
         {/* Right side - Attendance list */}
@@ -525,24 +479,40 @@ const TeacherAttendance: React.FC = () => {
               </div>
             </div>
             
+            {/* Attendance statistics */}
+            <div className="mb-4 grid grid-cols-4 gap-4">
+              <div className="rounded-lg bg-success/10 p-3">
+                <div className="text-xs font-medium text-success">Présents</div>
+                <div className="mt-1 text-2xl font-semibold text-success">{stats.present}</div>
+              </div>
+              <div className="rounded-lg bg-error/10 p-3">
+                <div className="text-xs font-medium text-error">Absents</div>
+                <div className="mt-1 text-2xl font-semibold text-error">{stats.absent}</div>
+              </div>
+              <div className="rounded-lg bg-warning/10 p-3">
+                <div className="text-xs font-medium text-warning">En retard</div>
+                <div className="mt-1 text-2xl font-semibold text-warning">{stats.late}</div>
+              </div>
+              <div className="rounded-lg bg-neutral-100 p-3">
+                <div className="text-xs font-medium text-neutral-600">Total</div>
+                <div className="mt-1 text-2xl font-semibold text-neutral-800">{stats.total}</div>
+              </div>
+            </div>
+            
             {/* Attendance table */}
             <div className="table-container overflow-x-auto">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col" className="w-1/3">Élève</th>
-                    <th scope="col" className="w-1/3">Statut</th>
-                    <th scope="col" className="w-1/3">Détails</th>
+                    <th scope="col" className="w-1/2">Élève</th>
+                    <th scope="col" className="w-1/2">Statut</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
                   {filteredStudents.length > 0 ? (
                     filteredStudents.map((student) => {
-                      const key = getAttendanceKey(currentDate, selectedClass.id);
-                      const attendance = attendanceData[key]?.[student.id] || {
-                        status: ATTENDANCE_STATUSES.PRESENT,
-                        minutes: 0,
-                        reason: '',
+                      const attendance = attendanceData[student.id] || {
+                        status: ATTENDANCE_STATUSES.NONE
                       };
                       
                       return (
@@ -553,16 +523,16 @@ const TeacherAttendance: React.FC = () => {
                                 {student.avatar ? (
                                   <img
                                     src={student.avatar}
-                                    alt={student.name}
+                                    alt={`${student.first_name} ${student.last_name}`}
                                     className="h-10 w-10 rounded-full object-cover"
                                   />
                                 ) : (
                                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                    {student.name.charAt(0)}
+                                    {student.first_name.charAt(0)}
                                   </div>
                                 )}
                               </div>
-                              <div className="ml-4 font-medium text-neutral-900">{student.name}</div>
+                              <div className="ml-4 font-medium text-neutral-900">{student.first_name} {student.last_name}</div>
                             </div>
                           </td>
                           <td className="px-3 py-4">
@@ -601,17 +571,6 @@ const TeacherAttendance: React.FC = () => {
                                   <Clock className="mr-1 h-3 w-3" />
                                   En retard
                                 </button>
-                                <button
-                                  onClick={() => handleAttendanceChange(student.id, ATTENDANCE_STATUSES.EXCUSED)}
-                                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                                    attendance.status === ATTENDANCE_STATUSES.EXCUSED
-                                      ? 'bg-primary/10 text-primary ring-1 ring-primary'
-                                      : 'bg-neutral-100 text-neutral-700 hover:bg-primary/10 hover:text-primary'
-                                  }`}
-                                >
-                                  <Check className="mr-1 h-3 w-3" />
-                                  Excusé
-                                </button>
                               </div>
                             ) : (
                               <div>
@@ -633,61 +592,12 @@ const TeacherAttendance: React.FC = () => {
                                     En retard
                                   </span>
                                 )}
-                                {attendance.status === ATTENDANCE_STATUSES.EXCUSED && (
-                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                    <Check className="mr-1 h-3 w-3" />
-                                    Excusé
+                                {attendance.status === ATTENDANCE_STATUSES.NONE && (
+                                  <span className="inline-flex items-center rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500">
+                                    Non défini
                                   </span>
                                 )}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-4 text-sm text-neutral-900">
-                            {editingAttendance ? (
-                              <>
-                                {attendance.status === ATTENDANCE_STATUSES.LATE && (
-                                  <div className="mb-2 flex items-center">
-                                    <label htmlFor={`late-${student.id}`} className="mr-2 text-xs text-neutral-500">
-                                      Minutes de retard:
-                                    </label>
-                                    <input
-                                      id={`late-${student.id}`}
-                                      type="number"
-                                      min="1"
-                                      max="120"
-                                      value={attendance.minutes}
-                                      onChange={(e) => handleLateMinutesChange(student.id, e.target.value)}
-                                      className="w-16 rounded-md border border-neutral-300 px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
-                                  </div>
-                                )}
-                                {attendance.status === ATTENDANCE_STATUSES.EXCUSED && (
-                                  <div>
-                                    <label htmlFor={`reason-${student.id}`} className="mb-1 block text-xs text-neutral-500">
-                                      Motif:
-                                    </label>
-                                    <input
-                                      id={`reason-${student.id}`}
-                                      type="text"
-                                      value={attendance.reason}
-                                      onChange={(e) => handleReasonChange(student.id, e.target.value)}
-                                      placeholder="Motif de l'absence"
-                                      className="w-full rounded-md border border-neutral-300 px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                {attendance.status === ATTENDANCE_STATUSES.LATE && (
-                                  <p className="text-warning">
-                                    {attendance.minutes} minute{attendance.minutes > 1 ? 's' : ''} de retard
-                                  </p>
-                                )}
-                                {attendance.status === ATTENDANCE_STATUSES.EXCUSED && attendance.reason && (
-                                  <p className="text-primary">Motif: {attendance.reason}</p>
-                                )}
-                              </>
                             )}
                           </td>
                         </tr>
@@ -695,7 +605,7 @@ const TeacherAttendance: React.FC = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={3} className="px-6 py-4 text-center text-sm text-neutral-500">
+                      <td colSpan={2} className="px-6 py-4 text-center text-sm text-neutral-500">
                         Aucun élève trouvé
                       </td>
                     </tr>
