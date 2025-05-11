@@ -1,55 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Search, Plus, Check, AlertTriangle, Pencil, Save, X } from 'lucide-react';
-
-// Mock data for classes taught by the teacher
-const TEACHER_CLASSES = [
-  { id: 1, name: '3ème A', subject: 'Mathématiques' },
-  { id: 2, name: '5ème B', subject: 'Mathématiques' },
-  { id: 3, name: '4ème C', subject: 'Mathématiques' },
-  { id: 4, name: '6ème A', subject: 'Mathématiques' },
-];
-
-// Mock data for students in classes
-const generateStudentsForClass = (classId) => {
-  const studentCount = 15 + Math.floor(Math.random() * 10); // 15-24 students per class
-  const students = [];
-  
-  for (let i = 1; i <= studentCount; i++) {
-    students.push({
-      id: `${classId}-${i}`,
-      name: `Élève ${i}`,
-      avatar: `https://i.pravatar.cc/150?img=${(classId * 10) + i}`,
-    });
-  }
-  
-  return students;
-};
-
-// Mock data for evaluations
-const MOCK_EVALUATIONS = [
-  { id: 1, classId: 1, title: 'Contrôle - Équations du second degré', date: '2023-10-15', coefficient: 3, maxScore: 20 },
-  { id: 2, classId: 1, title: 'Quiz - Théorème de Pythagore', date: '2023-09-28', coefficient: 1, maxScore: 20 },
-  { id: 3, classId: 1, title: 'Devoir maison - Trigonométrie', date: '2023-10-05', coefficient: 2, maxScore: 20 },
-  { id: 4, classId: 2, title: 'Contrôle - Fractions', date: '2023-10-10', coefficient: 2, maxScore: 20 },
-  { id: 5, classId: 2, title: 'Interrogation - Priorités de calcul', date: '2023-09-22', coefficient: 1, maxScore: 20 },
-  { id: 6, classId: 3, title: 'Contrôle - Géométrie dans l\'espace', date: '2023-10-12', coefficient: 2, maxScore: 20 },
-  { id: 7, classId: 4, title: 'Évaluation - Nombres décimaux', date: '2023-10-08', coefficient: 2, maxScore: 20 },
-];
-
-// Generate mock grades for students
-const generateGradesForEvaluation = (evaluationId, students) => {
-  const grades = {};
-  
-  students.forEach(student => {
-    // Generate a random grade between 0 and the max score (usually 20)
-    // Weighted towards the middle of the range (bell curve)
-    const rawGrade = (Math.random() + Math.random() + Math.random() + Math.random()) * 5;
-    const grade = Math.min(20, Math.max(0, rawGrade));
-    grades[student.id] = grade.toFixed(1);
-  });
-  
-  return grades;
-};
+import { ChevronDown, Plus, Check, AlertTriangle, Pencil, Save, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext'; // Adjust path as needed
 
 const EvaluationModal = ({ isOpen, mode, evaluation, classId, onClose, onSubmit }) => {
   const [formData, setFormData] = useState(
@@ -58,10 +9,9 @@ const EvaluationModal = ({ isOpen, mode, evaluation, classId, onClose, onSubmit 
       title: '',
       date: new Date().toISOString().split('T')[0],
       coefficient: 1,
-      maxScore: 20,
     }
   );
-  
+
   useEffect(() => {
     if (evaluation) {
       setFormData(evaluation);
@@ -71,35 +21,34 @@ const EvaluationModal = ({ isOpen, mode, evaluation, classId, onClose, onSubmit 
         title: '',
         date: new Date().toISOString().split('T')[0],
         coefficient: 1,
-        maxScore: 20,
       });
     }
   }, [evaluation, classId]);
-  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-  
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
   };
-  
+
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-neutral-900">
-            {mode === 'add' ? 'Ajouter une évaluation' : 'Modifier l\'évaluation'}
+            {mode === 'add' ? "Ajouter une évaluation" : "Modifier l'évaluation"}
           </h2>
           <button onClick={onClose} className="rounded-full p-1 hover:bg-neutral-100">
             <X className="h-5 w-5 text-neutral-500" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-neutral-700">
@@ -149,22 +98,6 @@ const EvaluationModal = ({ isOpen, mode, evaluation, classId, onClose, onSubmit 
                 className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
               />
             </div>
-            
-            <div>
-              <label htmlFor="maxScore" className="block text-sm font-medium text-neutral-700">
-                Note maximale
-              </label>
-              <input
-                type="number"
-                id="maxScore"
-                name="maxScore"
-                value={formData.maxScore}
-                onChange={handleChange}
-                min="1"
-                required
-                className="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-              />
-            </div>
           </div>
           
           <div className="flex justify-end space-x-3 pt-4">
@@ -188,57 +121,164 @@ const EvaluationModal = ({ isOpen, mode, evaluation, classId, onClose, onSubmit 
   );
 };
 
-const TeacherGrades: React.FC = () => {
-  const [selectedClass, setSelectedClass] = useState(TEACHER_CLASSES[0]);
+const TeacherGrades = () => {
+  const { user } = useAuth();
+  const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(null);
   const [selectedEvaluation, setSelectedEvaluation] = useState(null);
-  const [evaluations, setEvaluations] = useState(MOCK_EVALUATIONS);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [evaluations, setEvaluations] = useState([]);
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState({});
   const [editingGrades, setEditingGrades] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [modalState, setModalState] = useState({ isOpen: false, mode: null, evaluation: null });
   const [successMessage, setSuccessMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  // Generate students when selected class changes
+  // Fetch teacher's classes
   useEffect(() => {
-    if (selectedClass) {
-      setStudents(generateStudentsForClass(selectedClass.id));
+    const fetchClasses = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/teachers/${user.id}/classes`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch classes');
+        
+        const data = await response.json();
+        setClasses(data);
+        
+        if (data.length > 0) {
+          setSelectedClass(data[0]);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+        setLoading(false);
+      }
+    };
+
+    if (user && user.id) {
+      fetchClasses();
+    }
+  }, [user]);
+
+  // Fetch evaluations when selected class changes
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      if (!selectedClass) return;
+
+      try {
+        const response = await fetch(
+          `http://localhost:3000/api/teachers/${user.id}/evaluations?classId=${selectedClass.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to fetch evaluations');
+        
+        const data = await response.json();
+        setEvaluations(data);
+        setSelectedEvaluation(null);
+      } catch (error) {
+        console.error('Error fetching evaluations:', error);
+      }
+    };
+
+    if (user && user.id && selectedClass) {
+      fetchEvaluations();
+    }
+  }, [user, selectedClass]);
+
+  // Fetch students when selected class changes
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!selectedClass) return;
+
+      try {
+        const response = await fetch(
+          `http://localhost:3000/api/teachers/${user.id}/classes/${selectedClass.id}/students`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to fetch students');
+        
+        const data = await response.json();
+        setStudents(data);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      }
+    };
+
+    if (user && user.id && selectedClass) {
+      fetchStudents();
+    }
+  }, [user, selectedClass]);
+
+  // Fetch grades when selected evaluation changes (MAJ: utilise l'API correcte)
+  useEffect(() => {
+    const fetchGrades = async () => {
+      if (!selectedEvaluation || !students.length) return;
+
+      try {
+        const response = await fetch(
+          `http://localhost:3000/api/teachers/${user.id}/evaluations/${selectedEvaluation.id}/grades`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+        if (!response.ok) throw new Error('Failed to fetch grades');
+        const { grades: gradesList } = await response.json();
+
+        // Transform API data into our internal format
+        const gradesObj = {};
+        students.forEach(student => {
+          const found = gradesList.find(g => g.student_id === student.id);
+          gradesObj[student.id] = {
+            value: found && found.grade !== null ? found.grade.toString() : '',
+            comment: found && found.remarks ? found.remarks : ''
+          };
+        });
+
+        setGrades(prev => ({
+          ...prev,
+          [selectedEvaluation.id]: gradesObj
+        }));
+
+        // Si aucune note n'est disponible, activer automatiquement le mode d'édition
+        const hasGrades = gradesList.some(g => g.grade !== null);
+        setEditingGrades(!hasGrades);
+        setUnsavedChanges(false);
+      } catch (error) {
+        console.error('Error fetching grades:', error);
+      }
+    };
+
+    if (user && user.id && selectedEvaluation && students.length > 0) {
+      fetchGrades();
+    }
+    // eslint-disable-next-line
+  }, [user, selectedClass, selectedEvaluation, students]);
+
+  const handleClassChange = (classId) => {
+    const newClass = classes.find((c) => c.id === parseInt(classId));
+    if (newClass) {
+      setSelectedClass(newClass);
       setSelectedEvaluation(null);
       setEditingGrades(false);
       setUnsavedChanges(false);
-    }
-  }, [selectedClass]);
-
-  // Generate grades when selected evaluation changes
-  useEffect(() => {
-    if (selectedEvaluation && students.length > 0) {
-      // Check if we already have grades for this evaluation
-      if (!grades[selectedEvaluation.id]) {
-        setGrades({
-          ...grades,
-          [selectedEvaluation.id]: generateGradesForEvaluation(selectedEvaluation.id, students)
-        });
-      }
-      setEditingGrades(false);
-      setUnsavedChanges(false);
-    }
-  }, [selectedEvaluation, students]);
-
-  // Filter evaluations based on selected class
-  const filteredEvaluations = evaluations.filter(
-    (evaluation) => evaluation.classId === selectedClass.id
-  );
-  
-  // Filter students based on search query
-  const filteredStudents = students.filter((student) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleClassChange = (classId) => {
-    const newClass = TEACHER_CLASSES.find((c) => c.id === parseInt(classId));
-    if (newClass) {
-      setSelectedClass(newClass);
     }
   };
 
@@ -277,43 +317,143 @@ const TeacherGrades: React.FC = () => {
     let newValue = parseFloat(value);
     if (isNaN(newValue)) newValue = '';
     else if (newValue < 0) newValue = 0;
-    else if (newValue > selectedEvaluation.maxScore) newValue = selectedEvaluation.maxScore;
+    else if (newValue > 20) newValue = 20;
     else newValue = newValue.toFixed(1);
-    
+
     setGrades({
       ...grades,
       [selectedEvaluation.id]: {
         ...grades[selectedEvaluation.id],
-        [studentId]: newValue.toString()
+        [studentId]: {
+          ...grades[selectedEvaluation.id][studentId],
+          value: newValue.toString()
+        }
       }
     });
     setUnsavedChanges(true);
   };
 
-  const saveGrades = () => {
-    // In a real app, this would save to the backend
-    console.log('Saving grades:', grades[selectedEvaluation.id]);
-    setEditingGrades(false);
-    setUnsavedChanges(false);
-    setSuccessMessage('Notes enregistrées avec succès !');
-    
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 3000);
+  const handleCommentChange = (studentId, comment) => {
+    setGrades({
+      ...grades,
+      [selectedEvaluation.id]: {
+        ...grades[selectedEvaluation.id],
+        [studentId]: {
+          ...grades[selectedEvaluation.id][studentId],
+          comment: comment
+        }
+      }
+    });
+    setUnsavedChanges(true);
   };
 
-  const handleAddEvaluation = (evaluation) => {
-    const newEvaluation = {
-      ...evaluation,
-      id: evaluations.length + 1,
-    };
-    setEvaluations([...evaluations, newEvaluation]);
-    setSelectedEvaluation(newEvaluation);
-    setModalState({ isOpen: false, mode: null, evaluation: null });
+  // Sauvegarde et recharge les notes depuis l'API pour garantir la persistance
+  const saveGrades = async () => {
+    try {
+      const gradePromises = students.map(student => {
+        const studentGrade = grades[selectedEvaluation.id][student.id];
+        if (!studentGrade || studentGrade.value === '') return null;
+
+        return fetch(`http://localhost:3000/api/teachers/${user.id}/grades`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            studentId: student.id,
+            evaluationId: selectedEvaluation.id,
+            grade: parseFloat(studentGrade.value),
+            remarks: studentGrade.comment
+          })
+        });
+      });
+
+      // Filter out null promises and execute all
+      const validPromises = gradePromises.filter(p => p !== null);
+      await Promise.all(validPromises);
+
+      // Recharge les notes depuis l'API pour afficher les valeurs persistées
+      const response = await fetch(
+        `http://localhost:3000/api/teachers/${user.id}/evaluations/${selectedEvaluation.id}/grades`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      if (response.ok) {
+        const { grades: gradesList } = await response.json();
+        const gradesObj = {};
+        students.forEach(student => {
+          const found = gradesList.find(g => g.student_id === student.id);
+          gradesObj[student.id] = {
+            value: found && found.grade !== null ? found.grade.toString() : '',
+            comment: found && found.remarks ? found.remarks : ''
+          };
+        });
+        setGrades(prev => ({
+          ...prev,
+          [selectedEvaluation.id]: gradesObj
+        }));
+      }
+
+      setEditingGrades(false);
+      setUnsavedChanges(false);
+      setSuccessMessage('Notes enregistrées avec succès !');
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving grades:', error);
+      alert('Erreur lors de l\'enregistrement des notes.');
+    }
   };
 
+  const handleAddEvaluation = async (evaluation) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/teachers/${user.id}/evaluations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          title: evaluation.title,
+          date: evaluation.date,
+          coefficient: evaluation.coefficient,
+          classId: selectedClass.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create evaluation');
+      }
+
+      const result = await response.json();
+      
+      // Update evaluations list with the new evaluation
+      const newEvaluation = result.evaluation;
+      setEvaluations([...evaluations, newEvaluation]);
+      setSelectedEvaluation(newEvaluation);
+      setModalState({ isOpen: false, mode: null, evaluation: null });
+      
+      // Activer l'édition des notes directement pour la nouvelle évaluation
+      setEditingGrades(true);
+      
+      setSuccessMessage('Évaluation créée avec succès !');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error creating evaluation:', error);
+      alert('Erreur lors de la création de l\'évaluation.');
+    }
+  };
+
+  // This would need a PUT endpoint that's not shown in the API list
   const handleEditEvaluation = (evaluation) => {
+    // For now, let's just update the local state
     setEvaluations(
       evaluations.map((e) => (e.id === evaluation.id ? { ...e, ...evaluation } : e))
     );
@@ -329,61 +469,38 @@ const TeacherGrades: React.FC = () => {
     }
   };
 
-  // Calculate average grade for a student across all evaluations
-  const calculateStudentAverage = (studentId) => {
-    let totalWeightedGrade = 0;
-    let totalCoefficient = 0;
-    
-    filteredEvaluations.forEach(evaluation => {
-      if (grades[evaluation.id] && grades[evaluation.id][studentId]) {
-        const grade = parseFloat(grades[evaluation.id][studentId]);
-        if (!isNaN(grade)) {
-          totalWeightedGrade += grade * evaluation.coefficient;
-          totalCoefficient += evaluation.coefficient;
-        }
-      }
-    });
-    
-    if (totalCoefficient === 0) return '-';
-    return (totalWeightedGrade / totalCoefficient).toFixed(1);
+  // Vérifier s'il y a des notes saisies ou non pour l'évaluation sélectionnée
+  const hasGradesForSelectedEvaluation = () => {
+    if (!selectedEvaluation || !grades[selectedEvaluation.id]) return false;
+    return Object.values(grades[selectedEvaluation.id]).some(grade => grade.value && grade.value !== '');
   };
 
-  // Calculate average grade for all students in the current evaluation
-  const calculateEvaluationAverage = () => {
-    if (!selectedEvaluation || !grades[selectedEvaluation.id]) return '-';
-    
-    const evaluationGrades = grades[selectedEvaluation.id];
-    let total = 0;
-    let count = 0;
-    
-    Object.values(evaluationGrades).forEach(grade => {
-      const gradeValue = parseFloat(grade);
-      if (!isNaN(gradeValue)) {
-        total += gradeValue;
-        count++;
-      }
-    });
-    
-    if (count === 0) return '-';
-    return (total / count).toFixed(1);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-lg text-neutral-600">Chargement...</p>
+      </div>
+    );
+  }
+
+  // Initialiser un objet de notes vide si nécessaire
+  const initializeEmptyGrades = () => {
+    if (selectedEvaluation && !grades[selectedEvaluation.id] && students.length > 0) {
+      const emptyGrades = {};
+      students.forEach(student => {
+        emptyGrades[student.id] = { value: '', comment: '' };
+      });
+      setGrades(prev => ({
+        ...prev,
+        [selectedEvaluation.id]: emptyGrades
+      }));
+      return emptyGrades;
+    }
+    return grades[selectedEvaluation?.id] || {};
   };
-  
-  // Calculate class average for all evaluations
-  const calculateClassAverage = () => {
-    let totalAverage = 0;
-    let count = 0;
-    
-    filteredStudents.forEach(student => {
-      const average = calculateStudentAverage(student.id);
-      if (average !== '-') {
-        totalAverage += parseFloat(average);
-        count++;
-      }
-    });
-    
-    if (count === 0) return '-';
-    return (totalAverage / count).toFixed(1);
-  };
+
+  // S'assurer que l'objet grades est initialisé
+  const currentGrades = selectedEvaluation ? (grades[selectedEvaluation.id] || initializeEmptyGrades()) : {};
 
   return (
     <div className="space-y-6">
@@ -397,22 +514,26 @@ const TeacherGrades: React.FC = () => {
             <div className="relative inline-block text-left">
               <select
                 id="class-selector"
-                value={selectedClass.id}
+                value={selectedClass?.id || ''}
                 onChange={(e) => handleClassChange(e.target.value)}
                 className="block w-40 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                {TEACHER_CLASSES.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name} - {cls.subject}
-                  </option>
-                ))}
+                {classes.length === 0 ? (
+                  <option value="">Aucune classe</option>
+                ) : (
+                  classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))
+                )}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
                 <ChevronDown className="h-4 w-4" />
               </div>
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="evaluation-selector" className="mb-1 block text-sm font-medium text-neutral-700">
               Évaluation
@@ -423,9 +544,10 @@ const TeacherGrades: React.FC = () => {
                 value={selectedEvaluation?.id || ''}
                 onChange={(e) => handleEvaluationChange(e.target.value)}
                 className="block w-64 truncate rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                disabled={!selectedClass}
               >
                 <option value="">Sélectionnez une évaluation</option>
-                {filteredEvaluations.map((evaluation) => (
+                {evaluations.map((evaluation) => (
                   <option key={evaluation.id} value={evaluation.id}>
                     {evaluation.title} ({new Date(evaluation.date).toLocaleDateString('fr-FR')})
                   </option>
@@ -442,20 +564,11 @@ const TeacherGrades: React.FC = () => {
           <button
             onClick={() => setModalState({ isOpen: true, mode: 'add', evaluation: null })}
             className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            disabled={!selectedClass}
           >
             <Plus className="mr-2 h-4 w-4" />
             Nouvelle évaluation
           </button>
-          
-          {selectedEvaluation && (
-            <button
-              onClick={() => setModalState({ isOpen: true, mode: 'edit', evaluation: selectedEvaluation })}
-              className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Modifier
-            </button>
-          )}
         </div>
       </div>
       
@@ -487,150 +600,110 @@ const TeacherGrades: React.FC = () => {
               <p className="text-sm font-medium text-neutral-500">Coefficient</p>
               <p className="mt-1 text-lg font-semibold text-neutral-900">{selectedEvaluation.coefficient}</p>
             </div>
-            <div className="card">
-              <p className="text-sm font-medium text-neutral-500">Moyenne</p>
-              <p className="mt-1 text-lg font-semibold text-neutral-900">
-                {calculateEvaluationAverage()}/{selectedEvaluation.maxScore}
-              </p>
-            </div>
           </div>
           
-          {/* Search and edit controls */}
-          <div className="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
-            <div className="relative w-full max-w-xs">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Search className="h-5 w-5 text-neutral-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Rechercher un élève..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full rounded-md border border-neutral-300 py-2 pl-10 pr-3 text-sm placeholder-neutral-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            
-            <div className="flex space-x-2">
-              {editingGrades ? (
-                <>
-                  <button
-                    onClick={saveGrades}
-                    disabled={!unsavedChanges}
-                    className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      unsavedChanges
-                        ? 'bg-success hover:bg-success/90 focus:ring-success'
-                        : 'bg-neutral-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer
-                  </button>
-                  <button
-                    onClick={toggleEditingGrades}
-                    className="inline-flex items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Annuler
-                  </button>
-                </>
-              ) : (
+          {/* Edit controls */}
+          <div className="flex justify-end">
+            {editingGrades ? (
+              <>
+                <button
+                  onClick={saveGrades}
+                  disabled={!unsavedChanges}
+                  className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    unsavedChanges
+                      ? 'bg-success hover:bg-success/90 focus:ring-success'
+                      : 'bg-neutral-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Enregistrer
+                </button>
                 <button
                   onClick={toggleEditingGrades}
-                  className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  className="ml-2 inline-flex items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Modifier les notes
+                  <X className="mr-2 h-4 w-4" />
+                  Annuler
                 </button>
-              )}
-            </div>
+              </>
+            ) : (
+              <button
+                onClick={toggleEditingGrades}
+                className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Modifier les notes
+              </button>
+            )}
           </div>
           
-          {/* Students and grades table */}
-          {grades[selectedEvaluation.id] ? (
+          {/* Students and grades table - toujours affiché, même s'il n'y a pas de notes */}
+          {students.length > 0 ? (
             <div className="table-container overflow-x-auto">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col" className="w-3/5">Élève</th>
+                    <th scope="col" className="w-2/5">Élève</th>
                     <th scope="col" className="w-1/5 text-center">Note</th>
-                    <th scope="col" className="w-1/5 text-center">Moyenne générale</th>
+                    <th scope="col" className="w-2/5 text-center">Remarque</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {filteredStudents.map((student) => (
+                  {students.map((student) => (
                     <tr key={student.id}>
                       <td className="whitespace-nowrap py-4 pl-6 pr-3">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            {student.avatar ? (
-                              <img
-                                src={student.avatar}
-                                alt={student.name}
-                                className="h-10 w-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                {student.name.charAt(0)}
-                              </div>
-                            )}
+                          <div className="ml-4 font-medium text-neutral-900">
+                            {student.first_name} {student.last_name}
                           </div>
-                          <div className="ml-4 font-medium text-neutral-900">{student.name}</div>
                         </div>
                       </td>
                       <td className="px-3 py-4 text-center">
                         {editingGrades ? (
                           <input
                             type="number"
-                            value={grades[selectedEvaluation.id][student.id]}
+                            value={currentGrades[student.id]?.value || ''}
                             onChange={(e) => handleGradeChange(student.id, e.target.value)}
                             min="0"
-                            max={selectedEvaluation.maxScore}
+                            max="20"
                             step="0.1"
                             className="w-16 rounded-md border border-neutral-300 px-2 py-1 text-center text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         ) : (
                           <span className="font-medium">
-                            {grades[selectedEvaluation.id][student.id]}/{selectedEvaluation.maxScore}
+                            {currentGrades[student.id]?.value ? 
+                              `${currentGrades[student.id].value}/20` : 
+                              '-'}
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-4 text-center font-medium">
-                        {calculateStudentAverage(student.id)}/{selectedEvaluation.maxScore}
+                      <td className="px-3 py-4">
+                        {editingGrades ? (
+                          <input
+                            type="text"
+                            value={currentGrades[student.id]?.comment || ''}
+                            onChange={(e) => handleCommentChange(student.id, e.target.value)}
+                            className="w-full rounded-md border border-neutral-300 px-2 py-1 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                            placeholder="Ajouter une remarque..."
+                          />
+                        ) : (
+                          <span className="text-neutral-600">
+                            {currentGrades[student.id]?.comment || "-"}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
-                  
-                  {/* Class average row */}
-                  <tr className="bg-neutral-50">
-                    <td className="whitespace-nowrap py-4 pl-6 pr-3 font-semibold">
-                      Moyenne de la classe
-                    </td>
-                    <td className="px-3 py-4 text-center font-semibold">
-                      {calculateEvaluationAverage()}/{selectedEvaluation.maxScore}
-                    </td>
-                    <td className="px-3 py-4 text-center font-semibold">
-                      {calculateClassAverage()}/{selectedEvaluation.maxScore}
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="rounded-md bg-neutral-50 p-8 text-center">
               <AlertTriangle className="mx-auto h-12 w-12 text-warning" />
-              <h3 className="mt-2 text-lg font-medium text-neutral-900">Aucune note disponible</h3>
+              <h3 className="mt-2 text-lg font-medium text-neutral-900">Aucun élève</h3>
               <p className="mt-1 text-sm text-neutral-500">
-                Les notes pour cette évaluation n'ont pas encore été saisies.
+                Aucun élève n'est inscrit dans cette classe.
               </p>
-              <div className="mt-6">
-                <button
-                  onClick={toggleEditingGrades}
-                  className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Saisir les notes
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -641,15 +714,17 @@ const TeacherGrades: React.FC = () => {
           <p className="mt-1 text-sm text-neutral-500">
             Veuillez sélectionner une évaluation dans la liste déroulante ci-dessus ou créer une nouvelle évaluation.
           </p>
-          <div className="mt-6">
-            <button
-              onClick={() => setModalState({ isOpen: true, mode: 'add', evaluation: null })}
-              className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvelle évaluation
-            </button>
-          </div>
+          {selectedClass && (
+            <div className="mt-6">
+              <button
+                onClick={() => setModalState({ isOpen: true, mode: 'add', evaluation: null })}
+                className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle évaluation
+              </button>
+            </div>
+          )}
         </div>
       )}
       
@@ -658,7 +733,7 @@ const TeacherGrades: React.FC = () => {
         isOpen={modalState.isOpen}
         mode={modalState.mode}
         evaluation={modalState.evaluation}
-        classId={selectedClass.id}
+        classId={selectedClass?.id}
         onClose={() => setModalState({ isOpen: false, mode: null, evaluation: null })}
         onSubmit={handleSubmitEvaluation}
       />
