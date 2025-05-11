@@ -146,6 +146,8 @@ const TeacherAttendance = () => {
   const { user } = useAuth();
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [subjects, setSubjects] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [students, setStudents] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
@@ -156,20 +158,65 @@ const TeacherAttendance = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch teacher's classes
+  // Fetch teacher's details, classes, and subjects
   useEffect(() => {
-    const fetchClasses = async () => {
+    const fetchTeacherData = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/teachers/${user.id}/classes`, {
+        // First, fetch the teacher's information which includes their subject_id
+        const teacherResponse = await fetch(`http://localhost:3000/api/teachers/${user.id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
         
-        if (!response.ok) throw new Error('Failed to fetch classes');
-        const data = await response.json();
-        setClasses(data);
-        setSelectedClass(data[0]);
+        if (!teacherResponse.ok) throw new Error('Failed to fetch teacher information');
+        const teacherData = await teacherResponse.json();
+        
+        // Set the teacher's subject as the selected subject if available
+        if (teacherData.subject_id) {
+          setSelectedSubject(teacherData.subject_id);
+        }
+        
+        // Fetch all subjects (for selection dropdown)
+        const subjectsResponse = await fetch(`http://localhost:3000/api/subjects`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!subjectsResponse.ok) throw new Error('Failed to fetch subjects');
+        const subjectsData = await subjectsResponse.json();
+        setSubjects(subjectsData);
+        
+        // If the teacher doesn't have a subject assigned, select the first one as default
+        if (!teacherData.subject_id && subjectsData.length > 0) {
+          setSelectedSubject(subjectsData[0].id);
+        }
+        
+        // Fetch classes assigned to this teacher
+        const classesResponse = await fetch(`http://localhost:3000/api/teachers/${user.id}/classes`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!classesResponse.ok) throw new Error('Failed to fetch classes');
+        const classesData = await classesResponse.json();
+        
+        // Enhance class data with subject name information
+        const enhancedClasses = classesData.map(cls => {
+          // Find the matching subject
+          const matchingSubject = subjectsData.find(s => s.id === teacherData.subject_id);
+          return {
+            ...cls,
+            subject_name: matchingSubject ? matchingSubject.name : 'Unknown'
+          };
+        });
+        
+        setClasses(enhancedClasses);
+        if (enhancedClasses.length > 0) {
+          setSelectedClass(enhancedClasses[0]);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -177,7 +224,7 @@ const TeacherAttendance = () => {
       }
     };
 
-    if (user?.id) fetchClasses();
+    if (user?.id) fetchTeacherData();
   }, [user]);
 
   // Fetch students and attendance when class or date changes
@@ -200,29 +247,43 @@ const TeacherAttendance = () => {
         const studentsData = await studentsRes.json();
         setStudents(studentsData);
 
-        // Fetch attendance
-        const dateString = currentDate.toISOString().split('T')[0];
-        const attendanceRes = await fetch(
-          `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+        // Fetch attendance if a subject is selected
+        if (selectedSubject) {
+          const dateString = currentDate.toISOString().split('T')[0];
+          const attendanceRes = await fetch(
+            `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}&subjectId=${selectedSubject}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
             }
-          }
-        );
+          );
+          
+          if (!attendanceRes.ok) throw new Error('Failed to fetch attendance');
+          const attendanceData = await attendanceRes.json();
+          
+          // Format attendance data
+          const formattedAttendance = {};
+          
+          // Initialize all students with NONE status
+          studentsData.forEach(student => {
+            formattedAttendance[student.id] = {
+              status: ATTENDANCE_STATUSES.NONE
+            };
+          });
+          
+          // Update with actual attendance data where available
+          attendanceData.forEach(record => {
+            if (record.student_id && record.status) {
+              formattedAttendance[record.student_id] = {
+                status: record.status
+              };
+            }
+          });
+          
+          setAttendanceData(formattedAttendance);
+        }
         
-        if (!attendanceRes.ok) throw new Error('Failed to fetch attendance');
-        const attendanceData = await attendanceRes.json();
-        
-        // Format attendance data
-        const formattedAttendance = {};
-        attendanceData.forEach(record => {
-          formattedAttendance[record.student_id] = {
-            status: record.status || ATTENDANCE_STATUSES.NONE
-          };
-        });
-        
-        setAttendanceData(formattedAttendance);
         setEditingAttendance(false);
         setUnsavedChanges(false);
       } catch (err) {
@@ -231,39 +292,133 @@ const TeacherAttendance = () => {
     };
 
     fetchStudentsAndAttendance();
-  }, [selectedClass, currentDate, user]);
+  }, [selectedClass, selectedSubject, currentDate, user]);
 
   const handleClassChange = (classId) => {
     const newClass = classes.find(c => c.id === parseInt(classId));
     setSelectedClass(newClass);
   };
 
+  const handleSubjectChange = (subjectId) => {
+    setSelectedSubject(Number(subjectId));
+  };
+
   const saveAttendance = async () => {
     try {
-      const records = Object.entries(attendanceData).map(([studentId, data]) => ({
-        studentId: parseInt(studentId),
-        subjectId: selectedClass.subject_id,
-        date: currentDate.toISOString().split('T')[0],
-        status: data.status
-      }));
+      setError(null);
 
-      const response = await fetch('http://localhost:3000/api/attendance/bulk-record', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ records })
+      if (!selectedClass || !selectedSubject) {
+        setError("Veuillez sélectionner une classe et une matière");
+        return;
+      }
+
+      const dateString = currentDate.toISOString().split('T')[0];
+      // Fetch existing attendance for this class/date/subject
+      const attendanceRes = await fetch(
+        `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}&subjectId=${selectedSubject}`,
+        {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }
+      );
+      if (!attendanceRes.ok) throw new Error('Échec de la récupération des présences');
+
+      const currentAttendanceData = await attendanceRes.json();
+      const existingMap = {};
+      currentAttendanceData.forEach(rec => {
+        existingMap[rec.student_id] = rec.status;
       });
 
-      if (!response.ok) throw new Error('Failed to save attendance');
-      
+      // Build upsert list
+      const toUpsert = students
+        .map(student => {
+          const sid = student.id;
+          const newStatus = attendanceData[sid]?.status || ATTENDANCE_STATUSES.NONE;
+          const oldStatus = existingMap[sid] || ATTENDANCE_STATUSES.NONE;
+          
+          const record = {
+            studentId: Number(sid),
+            subjectId: Number(selectedSubject),
+            date: dateString,
+            status: newStatus,
+            studentName: `${student.first_name} ${student.last_name}`,
+            isChanged: newStatus !== ATTENDANCE_STATUSES.NONE && newStatus !== oldStatus
+          };
+          
+          return record;
+        })
+        .filter(r => r.isChanged);
+
+      console.log(`Upserting ${toUpsert.length} attendance records`);
+
+      if (toUpsert.length === 0) {
+        setSuccessMessage('Aucune présence nouvelle ou modifiée à enregistrer');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        setEditingAttendance(false);
+        setUnsavedChanges(false);
+        return;
+      }
+
+      const failed = [];
+      for (const rec of toUpsert) {
+        try {
+          // Extra validation before sending request
+          if (!rec.studentId || rec.studentId <= 0) {
+            console.error('Missing or invalid studentId for', rec.studentName);
+            failed.push(`${rec.studentName}: Champs manquants ou invalides (studentId)`);
+            continue;
+          }
+          if (!rec.subjectId || rec.subjectId <= 0) {
+            console.error('Missing or invalid subjectId for', rec.studentName);
+            failed.push(`${rec.studentName}: Champs manquants ou invalides (subjectId)`);
+            continue;
+          }
+          if (!rec.date) {
+            console.error('Missing date for', rec.studentName);
+            failed.push(`${rec.studentName}: Champs manquants (date)`);
+            continue;
+          }
+          if (!rec.status || !['present', 'absent', 'late'].includes(rec.status)) {
+            console.error('Missing or invalid status for', rec.studentName);
+            failed.push(`${rec.studentName}: Champs manquants ou invalides (status)`);
+            continue;
+          }
+          
+          const resp = await fetch('http://localhost:3000/api/attendance/record', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              studentId: rec.studentId,
+              subjectId: rec.subjectId,
+              date: rec.date,
+              status: rec.status
+            })
+          });
+          
+          const body = await resp.json();
+          
+          if (!resp.ok) {
+            failed.push(`${rec.studentName} (ID:${rec.studentId}): ${body.error || body.message}`);
+          }
+        } catch (err) {
+          console.error(`Error processing attendance for ${rec.studentName}:`, err);
+          failed.push(`${rec.studentName} (ID:${rec.studentId}): ${err.message}`);
+        }
+      }
+
+      if (failed.length) {
+        throw new Error(`Échec pour :\n• ${failed.join('\n• ')}`);
+      }
+
+      setSuccessMessage(`${toUpsert.length} présence(s) enregistrée(s) avec succès !`);
+      setTimeout(() => setSuccessMessage(''), 3000);
       setEditingAttendance(false);
       setUnsavedChanges(false);
-      setSuccessMessage('Présences enregistrées avec succès !');
-      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.message);
+      console.error('Error saving attendance:', err);
+      setError(err.message || 'Erreur lors de enregistrement');
     }
   };
 
@@ -274,12 +429,12 @@ const TeacherAttendance = () => {
         setUnsavedChanges(false);
         // Refetch the attendance data to reset changes
         const fetchStudentsAndAttendance = async () => {
-          if (!selectedClass) return;
+          if (!selectedClass || !selectedSubject) return;
 
           try {
             const dateString = currentDate.toISOString().split('T')[0];
             const attendanceRes = await fetch(
-              `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}`,
+              `http://localhost:3000/api/attendance/status/class/${selectedClass.id}?date=${dateString}&subjectId=${selectedSubject}`,
               {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -292,10 +447,21 @@ const TeacherAttendance = () => {
             
             // Format attendance data
             const formattedAttendance = {};
-            attendanceData.forEach(record => {
-              formattedAttendance[record.student_id] = {
-                status: record.status || ATTENDANCE_STATUSES.NONE
+            
+            // Initialize all students with NONE status
+            students.forEach(student => {
+              formattedAttendance[student.id] = {
+                status: ATTENDANCE_STATUSES.NONE
               };
+            });
+            
+            // Update with actual attendance data where available
+            attendanceData.forEach(record => {
+              if (record.student_id && record.status) {
+                formattedAttendance[record.student_id] = {
+                  status: record.status
+                };
+              }
             });
             
             setAttendanceData(formattedAttendance);
@@ -343,11 +509,14 @@ const TeacherAttendance = () => {
       absent: 0,
       late: 0,
       none: 0,
-      total: Object.keys(attendanceData).length
+      total: students.length // Total is based on student count, not attendance records
     };
     
     Object.values(attendanceData).forEach(record => {
-      stats[record.status]++;
+      if (record.status === ATTENDANCE_STATUSES.PRESENT) stats.present++;
+      else if (record.status === ATTENDANCE_STATUSES.ABSENT) stats.absent++;
+      else if (record.status === ATTENDANCE_STATUSES.LATE) stats.late++;
+      else stats.none++;
     });
     
     return stats;
@@ -372,7 +541,7 @@ const TeacherAttendance = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with class selector and date details */}
+      {/* Header with class and subject selectors and date details */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
           <div>
@@ -382,13 +551,36 @@ const TeacherAttendance = () => {
             <div className="relative inline-block text-left">
               <select
                 id="class-selector"
-                value={selectedClass?.id}
+                value={selectedClass?.id || ''}
                 onChange={(e) => handleClassChange(e.target.value)}
                 className="block w-40 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 {classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>
-                    {cls.name} - {cls.subject_name}
+                    {cls.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-neutral-500">
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <label htmlFor="subject-selector" className="mb-1 block text-sm font-medium text-neutral-700">
+              Matière
+            </label>
+            <div className="relative inline-block text-left">
+              <select
+                id="subject-selector"
+                value={selectedSubject || ''}
+                onChange={(e) => handleSubjectChange(e.target.value)}
+                className="block w-40 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name}
                   </option>
                 ))}
               </select>
@@ -409,9 +601,9 @@ const TeacherAttendance = () => {
             <>
               <button
                 onClick={saveAttendance}
-                disabled={!unsavedChanges}
+                disabled={!unsavedChanges || !selectedSubject}
                 className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  unsavedChanges
+                  unsavedChanges && selectedSubject
                     ? 'bg-success hover:bg-success/90 focus:ring-success'
                     : 'bg-neutral-400 cursor-not-allowed'
                 }`}
@@ -430,7 +622,12 @@ const TeacherAttendance = () => {
           ) : (
             <button
               onClick={toggleEditingAttendance}
-              className="inline-flex items-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-light focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              disabled={!selectedSubject}
+              className={`inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                selectedSubject
+                  ? 'bg-primary hover:bg-primary-light focus:ring-primary'
+                  : 'bg-neutral-400 cursor-not-allowed'
+              }`}
             >
               <Check className="mr-2 h-4 w-4" />
               Modifier les présences
@@ -527,7 +724,7 @@ const TeacherAttendance = () => {
                                     className="h-10 w-10 rounded-full object-cover"
                                   />
                                 ) : (
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                                     {student.first_name.charAt(0)}
                                   </div>
                                 )}

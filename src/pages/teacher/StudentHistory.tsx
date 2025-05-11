@@ -477,12 +477,7 @@ const StudentHistory: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="mt-4 rounded-md bg-neutral-50 p-3 sm:mt-0">
-                    <div className="text-xs font-medium text-neutral-500">Contact parent</div>
-                    <div className="mt-1 text-sm font-medium text-neutral-900">{selectedStudent.parentInfo.name}</div>
-                    <div className="mt-0.5 text-xs text-neutral-500">{selectedStudent.parentInfo.phone}</div>
-                    <div className="text-xs text-neutral-500">{selectedStudent.parentInfo.email}</div>
-                  </div>
+                  
                 </div>
               </div>
               
@@ -520,15 +515,7 @@ const StudentHistory: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="card bg-success/5 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-neutral-500">Remarques positives</p>
-                      <p className="mt-1 text-2xl font-bold text-success">{commentCounts.positive}</p>
-                    </div>
-                    <BookOpen className="h-10 w-10 text-success/60" />
-                  </div>
-                </div>
+            
               </div>
               
               {/* Tabs */}
