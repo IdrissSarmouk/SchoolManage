@@ -83,7 +83,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       roles: ['student'] 
     },
     { 
-      name: 'Notes', 
+      name: 'Bulletin', 
       path: '/student/grades', 
       icon: <FileText className="h-5 w-5" />, 
       roles: ['student'] 
